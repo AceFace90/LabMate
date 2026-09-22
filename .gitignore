@@ -1,0 +1,28 @@
+# Personal health data (real lab-result PDFs used as local test fixtures — never commit)
+*.pdf
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.sw?
+
+# Claude working notes (local only)
+.claude/

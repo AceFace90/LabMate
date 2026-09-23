@@ -56,6 +56,15 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null)
   const [dismissedSplash, setDismissedSplash] = useState(() => hasOnboarded())
 
+  // Cloud writes are fire-and-forget from the UI's perspective, but a rejected
+  // promise must still surface somewhere - otherwise a failed write looks
+  // indistinguishable from "did nothing" (this is what silently broke profile
+  // saves before ignoreUndefinedProperties was set on the Firestore client).
+  function reportCloudError(err: unknown) {
+    console.error('Cloud write failed', err)
+    setAuthError('Could not save your change. Please try again.')
+  }
+
   // Cloud sync is opt-in per browser: signing in merges this browser's local data
   // into the account (once), after which Firestore is the source of truth and the
   // local copy is cleared. Signing out drops back to whatever's now in local storage
@@ -115,7 +124,7 @@ export default function App() {
     const merged = mergeResults(results, newResults)
     if (user) {
       const added = merged.filter((r) => !results.some((existing) => existing.id === r.id))
-      for (const result of added) void saveResultCloud(user.uid, result)
+      for (const result of added) saveResultCloud(user.uid, result).catch(reportCloudError)
     } else {
       setResults(merged)
       saveResults(merged)
@@ -128,7 +137,7 @@ export default function App() {
     const merged = mergeResults(results, [withMeta])
     if (user) {
       if (merged.length !== results.length + 1) return // exact duplicate, same as local path
-      void saveResultCloud(user.uid, withMeta)
+      saveResultCloud(user.uid, withMeta).catch(reportCloudError)
     } else {
       setResults(merged)
       saveResults(merged)
@@ -137,7 +146,7 @@ export default function App() {
 
   function handleDeleteResult(id: string) {
     if (user) {
-      void deleteResultCloud(user.uid, id)
+      deleteResultCloud(user.uid, id).catch(reportCloudError)
     } else {
       const next = removeResult(results, id)
       setResults(next)
@@ -147,7 +156,7 @@ export default function App() {
 
   function handleEditResult(id: string, patch: { date: string; value: number; displayValue: string }) {
     if (user) {
-      void updateResultCloud(user.uid, id, patch)
+      updateResultCloud(user.uid, id, patch).catch(reportCloudError)
     } else {
       const next = updateResult(results, id, patch)
       setResults(next)
@@ -160,7 +169,7 @@ export default function App() {
     if (customMarkers.some((m) => m.key === key)) return
     const marker: CustomMarker = { key, label: input.label, unit: input.unit, createdAt: new Date().toISOString() }
     if (user) {
-      void saveCustomMarkerCloud(user.uid, marker)
+      saveCustomMarkerCloud(user.uid, marker).catch(reportCloudError)
     } else {
       const next = [...customMarkers, marker]
       setCustomMarkers(next)
@@ -170,7 +179,7 @@ export default function App() {
 
   function handleSaveProfile(next: Profile) {
     if (user) {
-      void saveProfileCloud(user.uid, next)
+      saveProfileCloud(user.uid, next).catch(reportCloudError)
     } else {
       setProfile(next)
       saveProfile(next)
@@ -179,7 +188,7 @@ export default function App() {
 
   function handleDeleteAllData() {
     if (user) {
-      void deleteAllCloudData(user.uid)
+      deleteAllCloudData(user.uid).catch(reportCloudError)
     } else {
       clearAllData()
       setResults([])

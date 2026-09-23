@@ -1,5 +1,6 @@
 import type { User } from 'firebase/auth'
-import { deleteUser } from 'firebase/auth'
+import { FirebaseError } from 'firebase/app'
+import { GoogleAuthProvider, deleteUser, reauthenticateWithPopup } from 'firebase/auth'
 import {
   collection,
   deleteDoc,
@@ -157,5 +158,16 @@ export async function deleteAccountCloud(user: User): Promise<void> {
   for (const d of customMarkersSnap.docs) batch.delete(d.ref)
   batch.delete(userDoc(uid))
   await batch.commit()
-  await deleteUser(user)
+  try {
+    await deleteUser(user)
+  } catch (err) {
+    // deleteUser() requires a "recent" sign-in; if the session has aged out,
+    // re-prompt for Google sign-in and retry once with the fresh credential.
+    if (err instanceof FirebaseError && err.code === 'auth/requires-recent-login') {
+      await reauthenticateWithPopup(user, new GoogleAuthProvider())
+      await deleteUser(user)
+    } else {
+      throw err
+    }
+  }
 }

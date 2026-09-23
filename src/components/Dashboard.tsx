@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { computeBioAge, isBioAgeAvailable } from '../lib/bioAge'
 import { formatIsoDate } from '../lib/dates'
+import { firstNameOf, timeOfDayGreeting } from '../lib/greeting'
 import { coverageByCategory, lastUpdatedDate, latestResultByMarker, overallCoverage } from '../lib/healthScore'
 import type { MarkerResult, Profile } from '../types'
 import { Findings } from './Findings'
@@ -8,11 +9,13 @@ import { Findings } from './Findings'
 interface Props {
   results: MarkerResult[]
   profile: Profile
+  /** Google display name, used only when no profile.name has been set. */
+  nameFallback: string | null
   onGoToUpload: () => void
   onGoToSettings: () => void
 }
 
-export function Dashboard({ results, profile, onGoToUpload, onGoToSettings }: Props) {
+export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoToSettings }: Props) {
   const [showBioAgeInfo, setShowBioAgeInfo] = useState(false)
   const [showCreatineInfo, setShowCreatineInfo] = useState(false)
   const overall = overallCoverage(results, profile.sex)
@@ -22,20 +25,32 @@ export function Dashboard({ results, profile, onGoToUpload, onGoToSettings }: Pr
   const bioAge = profile.birthDate
     ? computeBioAge(latest, profile.birthDate, { takesCreatineSupplement: profile.takesCreatineSupplement, sex: profile.sex })
     : null
+  const firstName = firstNameOf(profile.name, nameFallback)
+
+  const greeting = (
+    <div style={{ marginBottom: 16 }}>
+      <div className="caveat" style={{ fontSize: 14 }}>{timeOfDayGreeting()},</div>
+      <div style={{ fontSize: 26, fontWeight: 800 }}>{firstName} 👋</div>
+    </div>
+  )
 
   if (results.length === 0) {
     return (
-      <div className="card upload-drop">
-        <p>No results yet. Import a pathology PDF to get started.</p>
-        <button className="primary" onClick={onGoToUpload}>
-          Import a PDF
-        </button>
+      <div>
+        {greeting}
+        <div className="card upload-drop">
+          <p>No results yet. Import a pathology PDF to get started.</p>
+          <button className="primary" onClick={onGoToUpload}>
+            Import a PDF
+          </button>
+        </div>
       </div>
     )
   }
 
   return (
     <div>
+      {greeting}
       <div className="grid cols-3">
         <div className="card stat-tile">
           <div className="label">Markers with data</div>

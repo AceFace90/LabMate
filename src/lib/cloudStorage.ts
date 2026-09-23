@@ -45,6 +45,7 @@ export function subscribeProfile(uid: string, callback: (profile: Profile) => vo
   return onSnapshot(userDoc(uid), (snap) => {
     const data = snap.data()
     callback({
+      name: data?.name,
       birthDate: data?.birthDate ?? null,
       sex: data?.sex ?? null,
       takesCreatineSupplement: data?.takesCreatineSupplement,
@@ -133,6 +134,7 @@ export async function deleteAllCloudData(uid: string): Promise<void> {
   batch.set(
     userDoc(uid),
     {
+      name: deleteField(),
       birthDate: null,
       sex: null,
       takesCreatineSupplement: deleteField(),

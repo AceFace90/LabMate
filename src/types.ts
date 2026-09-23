@@ -69,6 +69,8 @@ export interface MarkerResult {
 }
 
 export interface Profile {
+  /** First name (or whatever they want to be called) - used for the dashboard greeting. */
+  name?: string
   birthDate: string | null
   sex: 'M' | 'F' | null
   /**

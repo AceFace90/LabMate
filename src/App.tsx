@@ -3,6 +3,7 @@ import { Dashboard } from './components/Dashboard'
 import { MarkerDetail } from './components/MarkerDetail'
 import { MarkerGrid } from './components/MarkerGrid'
 import { Settings } from './components/Settings'
+import { Splash } from './components/Splash'
 import { TestPlan } from './components/TestPlan'
 import { UploadFlow } from './components/UploadFlow'
 import {
@@ -22,6 +23,7 @@ import { deriveComputedMarkers } from './lib/derivedMarkers'
 import { signInWithGoogle, signOutUser } from './lib/firebase'
 import {
   clearAllData,
+  hasOnboarded,
   loadCustomMarkers,
   loadProfile,
   loadResults,
@@ -30,6 +32,7 @@ import {
   saveCustomMarkers,
   saveProfile,
   saveResults,
+  setOnboarded,
   updateResult,
 } from './lib/storage'
 import type { CustomMarker, MarkerResult, Profile } from './types'
@@ -51,6 +54,7 @@ export default function App() {
   const [cloudReady, setCloudReady] = useState(false)
   const [migrating, setMigrating] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [dismissedSplash, setDismissedSplash] = useState(() => hasOnboarded())
 
   // Cloud sync is opt-in per browser: signing in merges this browser's local data
   // into the account (once), after which Firestore is the source of truth and the
@@ -107,13 +111,11 @@ export default function App() {
   // can never go stale after a source value is edited or deleted.
   const displayResults = useMemo(() => [...results, ...deriveComputedMarkers(results)], [results])
 
-  const activeUser = user && cloudReady ? user : null
-
   function handleImport(newResults: MarkerResult[]) {
     const merged = mergeResults(results, newResults)
-    if (activeUser) {
+    if (user) {
       const added = merged.filter((r) => !results.some((existing) => existing.id === r.id))
-      for (const result of added) void saveResultCloud(activeUser.uid, result)
+      for (const result of added) void saveResultCloud(user.uid, result)
     } else {
       setResults(merged)
       saveResults(merged)
@@ -124,9 +126,9 @@ export default function App() {
   function handleAddManualResult(input: Omit<MarkerResult, 'id' | 'createdAt'>) {
     const withMeta: MarkerResult = { ...input, id: crypto.randomUUID(), createdAt: new Date().toISOString() }
     const merged = mergeResults(results, [withMeta])
-    if (activeUser) {
+    if (user) {
       if (merged.length !== results.length + 1) return // exact duplicate, same as local path
-      void saveResultCloud(activeUser.uid, withMeta)
+      void saveResultCloud(user.uid, withMeta)
     } else {
       setResults(merged)
       saveResults(merged)
@@ -134,8 +136,8 @@ export default function App() {
   }
 
   function handleDeleteResult(id: string) {
-    if (activeUser) {
-      void deleteResultCloud(activeUser.uid, id)
+    if (user) {
+      void deleteResultCloud(user.uid, id)
     } else {
       const next = removeResult(results, id)
       setResults(next)
@@ -144,8 +146,8 @@ export default function App() {
   }
 
   function handleEditResult(id: string, patch: { date: string; value: number; displayValue: string }) {
-    if (activeUser) {
-      void updateResultCloud(activeUser.uid, id, patch)
+    if (user) {
+      void updateResultCloud(user.uid, id, patch)
     } else {
       const next = updateResult(results, id, patch)
       setResults(next)
@@ -157,8 +159,8 @@ export default function App() {
     const key = `custom_${slugify(input.label)}`
     if (customMarkers.some((m) => m.key === key)) return
     const marker: CustomMarker = { key, label: input.label, unit: input.unit, createdAt: new Date().toISOString() }
-    if (activeUser) {
-      void saveCustomMarkerCloud(activeUser.uid, marker)
+    if (user) {
+      void saveCustomMarkerCloud(user.uid, marker)
     } else {
       const next = [...customMarkers, marker]
       setCustomMarkers(next)
@@ -167,8 +169,8 @@ export default function App() {
   }
 
   function handleSaveProfile(next: Profile) {
-    if (activeUser) {
-      void saveProfileCloud(activeUser.uid, next)
+    if (user) {
+      void saveProfileCloud(user.uid, next)
     } else {
       setProfile(next)
       saveProfile(next)
@@ -176,8 +178,8 @@ export default function App() {
   }
 
   function handleDeleteAllData() {
-    if (activeUser) {
-      void deleteAllCloudData(activeUser.uid)
+    if (user) {
+      void deleteAllCloudData(user.uid)
     } else {
       clearAllData()
       setResults([])
@@ -213,8 +215,33 @@ export default function App() {
     }
   }
 
+  function handleQuickStart(name: string) {
+    handleSaveProfile({ ...profile, name })
+    setOnboarded()
+    setDismissedSplash(true)
+  }
+
+  function handleSkipSplash() {
+    setOnboarded()
+    setDismissedSplash(true)
+  }
+
   if (initializing) {
     return <div className="app-header">Loading...</div>
+  }
+
+  // First-run only: existing local users (results.length > 0) or anyone signed in
+  // never see this, so it never gets in the way of local mode's zero-friction start.
+  if (!user && !dismissedSplash && results.length === 0) {
+    return (
+      <Splash
+        migrating={migrating}
+        authError={authError}
+        onQuickStart={handleQuickStart}
+        onSkip={handleSkipSplash}
+        onSignIn={handleSignIn}
+      />
+    )
   }
 
   return (
@@ -223,8 +250,8 @@ export default function App() {
         <div>
           <h1>LabMate</h1>
           <div className="subtitle">
-            {activeUser
-              ? `Signed in as ${activeUser.email} - synced to your account.`
+            {user
+              ? `Signed in as ${user.email} - synced to your account.`
               : 'Your pathology results, tracked over time - stored only in this browser.'}
           </div>
         </div>
@@ -258,6 +285,7 @@ export default function App() {
         <Dashboard
           results={displayResults}
           profile={profile}
+          nameFallback={user?.displayName ?? null}
           onGoToUpload={() => setTab('upload')}
           onGoToSettings={() => setTab('settings')}
         />

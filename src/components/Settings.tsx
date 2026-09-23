@@ -1,5 +1,5 @@
 import type { User } from 'firebase/auth'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Profile } from '../types'
 
 interface Props {
@@ -26,6 +26,15 @@ export function Settings({
   onDeleteAccount,
 }: Props) {
   const [birthDateInput, setBirthDateInput] = useState(profile.birthDate ?? '')
+  const [nameInput, setNameInput] = useState(profile.name ?? '')
+
+  // Cloud profile data arrives asynchronously (Firestore subscription, after the
+  // initial migration), so these text inputs need to resync once it lands - not
+  // just take profile as their initial value at mount.
+  useEffect(() => {
+    setBirthDateInput(profile.birthDate ?? '')
+    setNameInput(profile.name ?? '')
+  }, [profile.birthDate, profile.name])
 
   function handleDeleteAllData() {
     const ok = window.confirm(
@@ -76,12 +85,26 @@ export function Settings({
       </div>
 
       <div className="card" style={{ marginTop: 12 }}>
-        <h3 style={{ marginTop: 0 }}>Profile</h3>
+        <h3 style={{ marginTop: 0 }}>About you</h3>
+        <div className="form-row">
+          <label>Name</label>
+          <input
+            type="text"
+            placeholder="What should we call you?"
+            value={nameInput}
+            disabled={migrating}
+            onChange={(e) => setNameInput(e.target.value)}
+            onBlur={() => onSaveProfile({ ...profile, name: nameInput.trim() || undefined })}
+          />
+        </div>
+        <p className="caveat" style={{ marginBottom: 10 }}>Used for the dashboard greeting.</p>
+
         <div className="form-row">
           <label>Date of birth</label>
           <input
             type="date"
             value={birthDateInput}
+            disabled={migrating}
             onChange={(e) => setBirthDateInput(e.target.value)}
             onBlur={() => onSaveProfile({ ...profile, birthDate: birthDateInput || null })}
           />
@@ -92,14 +115,24 @@ export function Settings({
 
         <div className="form-row">
           <label>Sex</label>
-          <select
-            value={profile.sex ?? ''}
-            onChange={(e) => onSaveProfile({ ...profile, sex: (e.target.value || null) as 'M' | 'F' | null })}
-          >
-            <option value="">Not set</option>
-            <option value="F">Female</option>
-            <option value="M">Male</option>
-          </select>
+          <div className="segmented">
+            <button
+              type="button"
+              className={profile.sex === 'M' ? 'active' : ''}
+              disabled={migrating}
+              onClick={() => onSaveProfile({ ...profile, sex: 'M' })}
+            >
+              Male
+            </button>
+            <button
+              type="button"
+              className={profile.sex === 'F' ? 'active' : ''}
+              disabled={migrating}
+              onClick={() => onSaveProfile({ ...profile, sex: 'F' })}
+            >
+              Female
+            </button>
+          </div>
         </div>
         <p className="caveat" style={{ marginBottom: 10 }}>
           Only used for kidney-function equations (eGFR/Cystatin C) - those equations differ by sex.
@@ -109,6 +142,7 @@ export function Settings({
           <input
             type="checkbox"
             checked={!!profile.takesCreatineSupplement}
+            disabled={migrating}
             onChange={(e) => onSaveProfile({ ...profile, takesCreatineSupplement: e.target.checked })}
           />
           I take a creatine supplement

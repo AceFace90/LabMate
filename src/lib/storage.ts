@@ -3,6 +3,7 @@ import type { CustomMarker, MarkerResult, Profile } from '../types'
 const RESULTS_KEY = 'labmate:results:v1'
 const PROFILE_KEY = 'labmate:profile:v1'
 const CUSTOM_MARKERS_KEY = 'labmate:customMarkers:v1'
+const ONBOARDED_KEY = 'labmate:onboarded:v1'
 
 // Pre-rename keys (app was called LabTrack). Read once as a fallback so existing
 // browsers don't appear to lose their data after the rename.
@@ -96,6 +97,17 @@ export function clearAllData(): void {
   localStorage.removeItem(LEGACY_RESULTS_KEY)
   localStorage.removeItem(LEGACY_PROFILE_KEY)
   localStorage.removeItem(LEGACY_CUSTOM_MARKERS_KEY)
+}
+
+/** Whether this browser has already been through the welcome splash (via Quick
+ * Start, Skip, or Google sign-in) - controls whether it's shown again. Deliberately
+ * separate from the profile data itself so it isn't wiped by clearAllData(). */
+export function hasOnboarded(): boolean {
+  return localStorage.getItem(ONBOARDED_KEY) === '1'
+}
+
+export function setOnboarded(): void {
+  localStorage.setItem(ONBOARDED_KEY, '1')
 }
 
 export function exportAllData(): string {

@@ -2,6 +2,12 @@ import type { User } from 'firebase/auth'
 import { useEffect, useState } from 'react'
 import type { Profile } from '../types'
 
+const THEME_OPTIONS: { value: 'auto' | 'light' | 'dark'; icon: string; label: string }[] = [
+  { value: 'auto', icon: '📱', label: 'System' },
+  { value: 'light', icon: '☀️', label: 'Light' },
+  { value: 'dark', icon: '🌙', label: 'Dark' },
+]
+
 interface Props {
   profile: Profile
   onSaveProfile: (profile: Profile) => void
@@ -71,16 +77,15 @@ export function Settings({
             only - it's gone if you clear your browser data or uninstall the app.
           </p>
         )}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {!user && (
-            <button onClick={onSignIn} disabled={migrating}>
-              {migrating ? 'Signing in...' : 'Sign in with Google'}
-            </button>
-          )}
-          <button className="secondary" onClick={onLogOut} disabled={migrating}>
-            Log out
+        {!user && (
+          <button className="google" style={{ marginBottom: 10 }} onClick={onSignIn} disabled={migrating}>
+            <span className="g-icon">G</span>
+            {migrating ? 'Signing in...' : 'Sign in with Google'}
           </button>
-        </div>
+        )}
+        <button className="btn-logout" onClick={onLogOut} disabled={migrating}>
+          Log Out
+        </button>
       </div>
 
       <div className="card" style={{ marginTop: 12 }}>
@@ -155,16 +160,18 @@ export function Settings({
 
       <div className="card" style={{ marginTop: 12 }}>
         <h3 style={{ marginTop: 0 }}>Appearance</h3>
-        <div className="form-row">
-          <label>Theme</label>
-          <select
-            value={profile.theme ?? 'auto'}
-            onChange={(e) => onSaveProfile({ ...profile, theme: e.target.value as 'light' | 'dark' | 'auto' })}
-          >
-            <option value="auto">Auto (match system)</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
+        <div className="theme-picker">
+          {THEME_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={(profile.theme ?? 'auto') === opt.value ? 'active' : ''}
+              onClick={() => onSaveProfile({ ...profile, theme: opt.value })}
+            >
+              <span className="theme-icon">{opt.icon}</span>
+              <span>{opt.label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -177,12 +184,8 @@ export function Settings({
           {' '}There is no undo and no server copy to restore from - export a backup first if you might want this
           data again.
         </p>
-        <button
-          className="secondary"
-          style={{ color: 'var(--status-critical)', borderColor: 'var(--status-critical)' }}
-          onClick={handleDeleteAllData}
-        >
-          Delete all data
+        <button className="btn-wipe" onClick={handleDeleteAllData}>
+          ⚠️ Wipe all my data
         </button>
 
         {user && (
@@ -191,12 +194,8 @@ export function Settings({
               Delete your LabMate account entirely, including all synced data. You'll need to sign in again to use
               cloud sync afterwards, as a brand-new account.
             </p>
-            <button
-              className="secondary"
-              style={{ color: 'var(--status-critical)', borderColor: 'var(--status-critical)' }}
-              onClick={handleDeleteAccount}
-            >
-              Delete account
+            <button className="btn-wipe" style={{ marginTop: 8 }} onClick={handleDeleteAccount}>
+              ⚠️ Delete account
             </button>
           </>
         )}

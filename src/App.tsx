@@ -44,6 +44,17 @@ function slugify(name: string): string {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 }
 
+// Mirrors GymMate: no persistent app-name header - each non-Home tab gets its
+// own accent-coloured title instead (Dashboard's greeting plays that role there).
+function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <h2 className="page-title">{title}</h2>
+      <p className="page-subtitle">{subtitle}</p>
+    </div>
+  )
+}
+
 export default function App() {
   const { user, initializing } = useAuthUser()
   const [results, setResults] = useState<MarkerResult[]>(() => loadResults())
@@ -99,6 +110,13 @@ export default function App() {
       cancelled = true
     }
   }, [user])
+
+  // A signed-in user's home is always the dashboard - fires once when cloud data
+  // becomes available (not the results-length check the initial tab state uses,
+  // since that snapshot is taken before this user's cloud results have loaded).
+  useEffect(() => {
+    if (user && cloudReady) setTab('dashboard')
+  }, [user, cloudReady])
 
   useEffect(() => {
     if (!user || !cloudReady) return
@@ -254,7 +272,7 @@ export default function App() {
   }
 
   if (initializing) {
-    return <div className="app-header">Loading...</div>
+    return <div style={{ padding: 20 }}>Loading...</div>
   }
 
   // First-run only: existing local users (results.length > 0) or anyone signed in
@@ -274,41 +292,6 @@ export default function App() {
 
   return (
     <>
-      <header className="app-header">
-        <div>
-          <h1>LabMate</h1>
-          <div className="subtitle">
-            {user
-              ? `Signed in as ${user.email} - synced to your account.`
-              : 'Your pathology results, tracked over time - stored only in this browser.'}
-          </div>
-        </div>
-      </header>
-
-      <nav className="tabs">
-        <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>
-          Dashboard
-        </button>
-        <button
-          className={tab === 'markers' ? 'active' : ''}
-          onClick={() => {
-            setSelectedMarker(null)
-            setTab('markers')
-          }}
-        >
-          Markers
-        </button>
-        <button className={tab === 'testplan' ? 'active' : ''} onClick={() => setTab('testplan')}>
-          Test Plan
-        </button>
-        <button className={tab === 'upload' ? 'active' : ''} onClick={() => setTab('upload')}>
-          Import PDF
-        </button>
-        <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
-          Settings
-        </button>
-      </nav>
-
       {tab === 'dashboard' && (
         <Dashboard
           results={displayResults}
@@ -331,32 +314,77 @@ export default function App() {
             onEditResult={handleEditResult}
           />
         ) : (
-          <MarkerGrid
-            results={displayResults}
-            customMarkers={customMarkers}
-            profile={profile}
-            onSelectMarker={setSelectedMarker}
-            onAddCustomMarker={handleAddCustomMarker}
-          />
+          <>
+            <PageHeader title="Markers" subtitle="Every marker you've imported or logged manually." />
+            <MarkerGrid
+              results={displayResults}
+              customMarkers={customMarkers}
+              profile={profile}
+              onSelectMarker={setSelectedMarker}
+              onAddCustomMarker={handleAddCustomMarker}
+            />
+          </>
         ))}
 
-      {tab === 'testplan' && <TestPlan results={displayResults} profile={profile} />}
+      {tab === 'testplan' && (
+        <>
+          <PageHeader title="Test Plan" subtitle="What's due next, based on your results and their usual cadence." />
+          <TestPlan results={displayResults} profile={profile} />
+        </>
+      )}
 
-      {tab === 'upload' && <UploadFlow onImport={handleImport} />}
+      {tab === 'upload' && (
+        <>
+          <PageHeader title="Import PDF" subtitle="Add a new pathology report." />
+          <UploadFlow onImport={handleImport} />
+        </>
+      )}
 
       {tab === 'settings' && (
-        <Settings
-          profile={profile}
-          onSaveProfile={handleSaveProfile}
-          onDeleteAllData={handleDeleteAllData}
-          user={user}
-          migrating={migrating}
-          authError={authError}
-          onSignIn={handleSignIn}
-          onLogOut={handleLogOut}
-          onDeleteAccount={handleDeleteAccount}
-        />
+        <>
+          <PageHeader title="Settings" subtitle="Your profile, appearance and account." />
+          <Settings
+            profile={profile}
+            onSaveProfile={handleSaveProfile}
+            onDeleteAllData={handleDeleteAllData}
+            user={user}
+            migrating={migrating}
+            authError={authError}
+            onSignIn={handleSignIn}
+            onLogOut={handleLogOut}
+            onDeleteAccount={handleDeleteAccount}
+          />
+        </>
       )}
+
+      <nav className="tabs">
+        <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>
+          <span className="tab-icon">🏠</span>
+          <span className="tab-label">Dashboard</span>
+        </button>
+        <button
+          className={tab === 'markers' ? 'active' : ''}
+          onClick={() => {
+            setSelectedMarker(null)
+            setTab('markers')
+          }}
+        >
+          <span className="tab-icon">📊</span>
+          <span className="tab-label">Markers</span>
+        </button>
+        <button className={tab === 'testplan' ? 'active' : ''} onClick={() => setTab('testplan')}>
+          <span className="tab-icon">📋</span>
+          <span className="tab-label">Test Plan</span>
+        </button>
+        <button className={tab === 'upload' ? 'active' : ''} onClick={() => setTab('upload')}>
+          <span className="tab-icon">📄</span>
+          <span className="tab-label">Import PDF</span>
+        </button>
+        <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
+          <span className="tab-icon">⚙️</span>
+          <span className="tab-label">Settings</span>
+        </button>
+      </nav>
     </>
   )
 }

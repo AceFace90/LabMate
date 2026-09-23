@@ -54,13 +54,8 @@ export function Splash({ migrating, authError, onQuickStart, onSkip, onSignIn }:
           <button className="primary" style={{ width: '100%', marginBottom: 10 }} onClick={() => setShowNameInput(true)}>
             🚀 Quick Start
           </button>
-          <button
-            className="secondary"
-            style={{ width: '100%', marginBottom: 10 }}
-            onClick={onSignIn}
-            disabled={migrating}
-          >
-            <span style={{ color: '#4285F4', fontWeight: 700, marginRight: 6 }}>G</span>
+          <button className="google" style={{ marginBottom: 10 }} onClick={onSignIn} disabled={migrating}>
+            <span className="g-icon">G</span>
             {migrating ? 'Signing in...' : 'Sign in with Google'}
           </button>
           <p className="caveat" style={{ textAlign: 'center', marginBottom: 16 }}>

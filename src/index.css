@@ -15,6 +15,11 @@
   --status-warning: #eab308;
   --status-serious: #f97316;
   --status-critical: #ef4444;
+  --accent-bg: rgba(22, 163, 74, 0.1);
+  --accent-border: rgba(22, 163, 74, 0.3);
+  /* Text color placed on top of a solid --series-1 fill (buttons, active segments).
+     GymMate inverts this per theme rather than always using white. */
+  --accent-contrast: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -30,6 +35,9 @@
     --border: rgba(255, 255, 255, 0.1);
     --series-1: #39ff14;
     --status-good: #39ff14;
+    --accent-bg: rgba(57, 255, 20, 0.1);
+    --accent-border: rgba(57, 255, 20, 0.3);
+    --accent-contrast: #000000;
   }
 }
 
@@ -47,6 +55,9 @@
   --border: rgba(255, 255, 255, 0.1);
   --series-1: #39ff14;
   --status-good: #39ff14;
+  --accent-bg: rgba(57, 255, 20, 0.1);
+  --accent-border: rgba(57, 255, 20, 0.3);
+  --accent-contrast: #000000;
 }
 
 * {
@@ -60,62 +71,89 @@ body {
   color: var(--text-primary);
 }
 
+/* GymMate is a mobile app with no desktop breakpoint, so its web build always
+   fills the full viewport width - matching that means LabMate shouldn't cap out
+   at a fixed desktop column width either, just keep readable edge padding. */
 #root {
-  max-width: 1080px;
   margin: 0 auto;
-  padding: 20px 16px 64px;
+  padding: 20px 20px 96px;
 }
 
-.app-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  gap: 12px;
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--series-1);
+  margin: 0 0 4px;
 }
 
-.app-header h1 {
-  font-size: 22px;
+.page-subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
   margin: 0;
 }
 
-.app-header .subtitle {
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
+/* Bottom tab bar (mirrors GymMate's AppNavigator: fixed bar, plain icon+label,
+   active state is color/opacity only - no box or underline around the tab). */
 nav.tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
   display: flex;
-  gap: 4px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid var(--gridline);
+  background: var(--surface-1);
+  border-top: 1px solid var(--gridline);
+  height: 64px;
+  padding-bottom: 8px;
 }
 
 nav.tabs button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
   background: none;
   border: none;
-  padding: 10px 14px;
-  font-size: 14px;
-  color: var(--text-secondary);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+}
+
+nav.tabs .tab-icon {
+  font-size: 20px;
+  opacity: 0.5;
+}
+
+nav.tabs .tab-label {
+  font-size: 11px;
+  font-weight: 600;
 }
 
 nav.tabs button.active {
-  color: var(--text-primary);
-  border-bottom-color: var(--series-1);
-  font-weight: 600;
+  color: var(--series-1);
+}
+
+nav.tabs button.active .tab-icon {
+  opacity: 1;
 }
 
 .card {
   background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: 1px solid var(--gridline);
+  border-radius: 14px;
   padding: 16px;
 }
 
 .card + .card {
   margin-top: 12px;
+}
+
+/* .grid already sets its own gap - the sibling-margin rule above only makes
+   sense for cards stacked vertically outside a grid, and inside one it just
+   pushes the 2nd/3rd column down, misaligning them against the 1st. */
+.grid .card + .card {
+  margin-top: 0;
 }
 
 .grid {
@@ -128,9 +166,12 @@ nav.tabs button.active {
 }
 
 .stat-tile .label {
-  color: var(--text-secondary);
-  font-size: 13px;
-  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
 }
 
 .stat-tile .value {
@@ -207,8 +248,8 @@ nav.tabs button.active {
 }
 
 .marker-card {
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--gridline);
+  border-radius: 10px;
   padding: 10px 12px;
   cursor: pointer;
   background: var(--surface-1);
@@ -367,6 +408,7 @@ nav.tabs button.active {
 }
 .finding-header .badge {
   background: color-mix(in srgb, var(--status-serious) 18%, transparent);
+  border-color: color-mix(in srgb, var(--status-serious) 40%, transparent);
   color: var(--status-serious);
 }
 
@@ -463,27 +505,112 @@ nav.tabs button.active {
 
 button.primary {
   background: var(--series-1);
-  color: white;
+  color: var(--accent-contrast);
   border: none;
-  border-radius: 6px;
-  padding: 10px 16px;
-  font-size: 14px;
+  border-radius: 10px;
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
 }
 
 button.secondary {
   background: none;
-  border: 1px solid var(--border);
+  border: 1px solid var(--gridline);
   color: var(--text-primary);
-  border-radius: 6px;
-  padding: 9px 15px;
-  font-size: 14px;
+  border-radius: 10px;
+  padding: 13px 23px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
 }
 
-.upload-drop {
-  border: 1px dashed var(--baseline);
+button.google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  background: var(--page-plane);
+  border: 1px solid var(--gridline);
+  border-radius: 999px;
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+button.google .g-icon {
+  color: #4285f4;
+  font-weight: 800;
+}
+
+button.btn-logout {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 1px solid var(--status-critical);
+  border-radius: 14px;
+  padding: 16px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--status-critical);
+  cursor: pointer;
+}
+
+button.btn-wipe {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  background: #450a0a;
+  border: 1px solid #991b1b;
+  border-radius: 14px;
+  padding: 16px 24px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--status-critical);
+  cursor: pointer;
+}
+
+.theme-picker {
+  display: flex;
+  gap: 10px;
+}
+
+.theme-picker button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid var(--gridline);
   border-radius: 10px;
+  padding: 14px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.theme-picker .theme-icon {
+  font-size: 18px;
+}
+
+.theme-picker button.active {
+  background: var(--accent-bg);
+  border-color: var(--series-1);
+  color: var(--series-1);
+}
+
+.upload-drop {
+  border: 1px dashed var(--gridline);
+  border-radius: 14px;
   padding: 32px;
   text-align: center;
   color: var(--text-secondary);
@@ -501,7 +628,8 @@ button.secondary {
 
 .modal {
   background: var(--surface-1);
-  border-radius: 10px;
+  border: 1px solid var(--gridline);
+  border-radius: 14px;
   padding: 20px;
   width: 320px;
   max-width: 90vw;
@@ -579,8 +707,8 @@ table.results-table th {
 .segmented {
   display: flex;
   flex: 1;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 1px solid var(--gridline);
+  border-radius: 10px;
   overflow: hidden;
 }
 
@@ -595,20 +723,22 @@ table.results-table th {
 }
 
 .segmented button:not(:last-child) {
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--gridline);
 }
 
 .segmented button.active {
   background: var(--series-1);
-  color: white;
+  color: var(--accent-contrast);
   font-weight: 600;
 }
 
 .badge {
   display: inline-block;
   font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--gridline);
-  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  color: var(--series-1);
 }

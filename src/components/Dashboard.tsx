@@ -253,11 +253,6 @@ export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoTo
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 12, fontSize: 12, color: 'var(--text-muted)' }}>
-        Roadmap: staying focused on blood/pathology tracking and biological age - next up is a productised build
-        (cloud sync via Firestore, GitHub Pages hosting, iOS app). This build is the local-only prototype.
-      </div>
-
     </div>
   )
 }

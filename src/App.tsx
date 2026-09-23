@@ -55,6 +55,9 @@ export default function App() {
   const [migrating, setMigrating] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
   const [dismissedSplash, setDismissedSplash] = useState(() => hasOnboarded())
+  // Transient override so "Log out" can always return to the splash screen, even
+  // for a returning local user with data (who wouldn't otherwise see it again).
+  const [forceSplash, setForceSplash] = useState(false)
 
   // Cloud writes are fire-and-forget from the UI's perspective, but a rejected
   // promise must still surface somewhere - otherwise a failed write looks
@@ -209,8 +212,21 @@ export default function App() {
     }
   }
 
-  async function handleSignOut() {
-    await signOutUser()
+  // Always returns to the splash/welcome screen, whether the browser was signed
+  // into Google or just running in local Quick Start mode - mirrors GymMate's
+  // "Log Out" button, which isn't conditional on how you got logged in.
+  async function handleLogOut() {
+    setAuthError(null)
+    if (user) {
+      try {
+        await signOutUser()
+      } catch (err) {
+        console.error('Sign-out failed', err)
+        setAuthError('Sign-out failed. Please try again.')
+        return
+      }
+    }
+    setForceSplash(true)
   }
 
   async function handleDeleteAccount() {
@@ -228,11 +244,13 @@ export default function App() {
     handleSaveProfile({ ...profile, name })
     setOnboarded()
     setDismissedSplash(true)
+    setForceSplash(false)
   }
 
   function handleSkipSplash() {
     setOnboarded()
     setDismissedSplash(true)
+    setForceSplash(false)
   }
 
   if (initializing) {
@@ -241,7 +259,8 @@ export default function App() {
 
   // First-run only: existing local users (results.length > 0) or anyone signed in
   // never see this, so it never gets in the way of local mode's zero-friction start.
-  if (!user && !dismissedSplash && results.length === 0) {
+  // forceSplash overrides that once, for the explicit "Log out" action.
+  if (!user && (forceSplash || (!dismissedSplash && results.length === 0))) {
     return (
       <Splash
         migrating={migrating}
@@ -334,7 +353,7 @@ export default function App() {
           migrating={migrating}
           authError={authError}
           onSignIn={handleSignIn}
-          onSignOut={handleSignOut}
+          onLogOut={handleLogOut}
           onDeleteAccount={handleDeleteAccount}
         />
       )}

@@ -10,7 +10,7 @@ interface Props {
   migrating: boolean
   authError: string | null
   onSignIn: () => void
-  onSignOut: () => void
+  onLogOut: () => void
   onDeleteAccount: () => void
 }
 
@@ -22,7 +22,7 @@ export function Settings({
   migrating,
   authError,
   onSignIn,
-  onSignOut,
+  onLogOut,
   onDeleteAccount,
 }: Props) {
   const [birthDateInput, setBirthDateInput] = useState(profile.birthDate ?? '')
@@ -62,26 +62,25 @@ export function Settings({
           </p>
         )}
         {user ? (
-          <>
-            <p className="caveat" style={{ marginBottom: 10 }}>
-              Signed in as {user.email}. Your data syncs to this account and is available on any device you sign
-              into.
-            </p>
-            <button className="secondary" onClick={onSignOut} disabled={migrating}>
-              Sign out
-            </button>
-          </>
+          <p className="caveat" style={{ marginBottom: 10 }}>
+            Signed in as {user.email}. Your data syncs to this account and is available on any device you sign into.
+          </p>
         ) : (
-          <>
-            <p className="caveat" style={{ marginBottom: 10 }}>
-              Sign in to sync your data across devices. Without signing in, everything stays local to this browser
-              only - it's gone if you clear your browser data or uninstall the app.
-            </p>
+          <p className="caveat" style={{ marginBottom: 10 }}>
+            Sign in to sync your data across devices. Without signing in, everything stays local to this browser
+            only - it's gone if you clear your browser data or uninstall the app.
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {!user && (
             <button onClick={onSignIn} disabled={migrating}>
               {migrating ? 'Signing in...' : 'Sign in with Google'}
             </button>
-          </>
-        )}
+          )}
+          <button className="secondary" onClick={onLogOut} disabled={migrating}>
+            Log out
+          </button>
+        </div>
       </div>
 
       <div className="card" style={{ marginTop: 12 }}>

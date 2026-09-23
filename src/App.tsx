@@ -5,7 +5,21 @@ import { MarkerGrid } from './components/MarkerGrid'
 import { Settings } from './components/Settings'
 import { TestPlan } from './components/TestPlan'
 import { UploadFlow } from './components/UploadFlow'
+import {
+  deleteAccountCloud,
+  deleteAllCloudData,
+  deleteResultCloud,
+  migrateLocalDataToCloud,
+  saveCustomMarkerCloud,
+  saveProfileCloud,
+  saveResultCloud,
+  subscribeCustomMarkers,
+  subscribeProfile,
+  subscribeResults,
+  updateResultCloud,
+} from './lib/cloudStorage'
 import { deriveComputedMarkers } from './lib/derivedMarkers'
+import { signInWithGoogle, signOutUser } from './lib/firebase'
 import {
   clearAllData,
   loadCustomMarkers,
@@ -19,6 +33,7 @@ import {
   updateResult,
 } from './lib/storage'
 import type { CustomMarker, MarkerResult, Profile } from './types'
+import { useAuthUser } from './lib/useAuthUser'
 
 type Tab = 'dashboard' | 'markers' | 'testplan' | 'upload' | 'settings'
 
@@ -27,11 +42,59 @@ function slugify(name: string): string {
 }
 
 export default function App() {
+  const { user, initializing } = useAuthUser()
   const [results, setResults] = useState<MarkerResult[]>(() => loadResults())
   const [profile, setProfile] = useState<Profile>(() => loadProfile())
   const [customMarkers, setCustomMarkers] = useState<CustomMarker[]>(() => loadCustomMarkers())
   const [tab, setTab] = useState<Tab>(results.length ? 'dashboard' : 'upload')
   const [selectedMarker, setSelectedMarker] = useState<string | null>(null)
+  const [cloudReady, setCloudReady] = useState(false)
+  const [migrating, setMigrating] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+
+  // Cloud sync is opt-in per browser: signing in merges this browser's local data
+  // into the account (once), after which Firestore is the source of truth and the
+  // local copy is cleared. Signing out drops back to whatever's now in local storage
+  // (empty, post-migration) rather than leaving cloud data cached for the next person
+  // on a shared device.
+  useEffect(() => {
+    if (!user) {
+      setCloudReady(false)
+      setResults(loadResults())
+      setProfile(loadProfile())
+      setCustomMarkers(loadCustomMarkers())
+      return
+    }
+    let cancelled = false
+    setCloudReady(false)
+    setMigrating(true)
+    migrateLocalDataToCloud(user)
+      .then(() => {
+        if (!cancelled) setCloudReady(true)
+      })
+      .catch((err) => {
+        console.error('Cloud sync failed', err)
+        if (!cancelled) setAuthError('Could not sync to the cloud. Please try again.')
+      })
+      .finally(() => {
+        if (!cancelled) setMigrating(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (!user || !cloudReady) return
+    const unsubResults = subscribeResults(user.uid, setResults)
+    const unsubProfile = subscribeProfile(user.uid, setProfile)
+    const unsubCustomMarkers = subscribeCustomMarkers(user.uid, setCustomMarkers)
+    return () => {
+      unsubResults()
+      unsubProfile()
+      unsubCustomMarkers()
+    }
+  }, [user, cloudReady])
 
   useEffect(() => {
     const theme = profile.theme ?? 'auto'
@@ -44,53 +107,114 @@ export default function App() {
   // can never go stale after a source value is edited or deleted.
   const displayResults = useMemo(() => [...results, ...deriveComputedMarkers(results)], [results])
 
+  const activeUser = user && cloudReady ? user : null
+
   function handleImport(newResults: MarkerResult[]) {
     const merged = mergeResults(results, newResults)
-    setResults(merged)
-    saveResults(merged)
+    if (activeUser) {
+      const added = merged.filter((r) => !results.some((existing) => existing.id === r.id))
+      for (const result of added) void saveResultCloud(activeUser.uid, result)
+    } else {
+      setResults(merged)
+      saveResults(merged)
+    }
     setTab('dashboard')
   }
 
   function handleAddManualResult(input: Omit<MarkerResult, 'id' | 'createdAt'>) {
     const withMeta: MarkerResult = { ...input, id: crypto.randomUUID(), createdAt: new Date().toISOString() }
     const merged = mergeResults(results, [withMeta])
-    setResults(merged)
-    saveResults(merged)
+    if (activeUser) {
+      if (merged.length !== results.length + 1) return // exact duplicate, same as local path
+      void saveResultCloud(activeUser.uid, withMeta)
+    } else {
+      setResults(merged)
+      saveResults(merged)
+    }
   }
 
   function handleDeleteResult(id: string) {
-    const next = removeResult(results, id)
-    setResults(next)
-    saveResults(next)
+    if (activeUser) {
+      void deleteResultCloud(activeUser.uid, id)
+    } else {
+      const next = removeResult(results, id)
+      setResults(next)
+      saveResults(next)
+    }
   }
 
   function handleEditResult(id: string, patch: { date: string; value: number; displayValue: string }) {
-    const next = updateResult(results, id, patch)
-    setResults(next)
-    saveResults(next)
+    if (activeUser) {
+      void updateResultCloud(activeUser.uid, id, patch)
+    } else {
+      const next = updateResult(results, id, patch)
+      setResults(next)
+      saveResults(next)
+    }
   }
 
   function handleAddCustomMarker(input: { label: string; unit: string }) {
     const key = `custom_${slugify(input.label)}`
     if (customMarkers.some((m) => m.key === key)) return
     const marker: CustomMarker = { key, label: input.label, unit: input.unit, createdAt: new Date().toISOString() }
-    const next = [...customMarkers, marker]
-    setCustomMarkers(next)
-    saveCustomMarkers(next)
+    if (activeUser) {
+      void saveCustomMarkerCloud(activeUser.uid, marker)
+    } else {
+      const next = [...customMarkers, marker]
+      setCustomMarkers(next)
+      saveCustomMarkers(next)
+    }
   }
 
   function handleSaveProfile(next: Profile) {
-    setProfile(next)
-    saveProfile(next)
+    if (activeUser) {
+      void saveProfileCloud(activeUser.uid, next)
+    } else {
+      setProfile(next)
+      saveProfile(next)
+    }
   }
 
   function handleDeleteAllData() {
-    clearAllData()
-    setResults([])
-    setProfile({ birthDate: null, sex: null })
-    setCustomMarkers([])
+    if (activeUser) {
+      void deleteAllCloudData(activeUser.uid)
+    } else {
+      clearAllData()
+      setResults([])
+      setProfile({ birthDate: null, sex: null })
+      setCustomMarkers([])
+    }
     setSelectedMarker(null)
     setTab('upload')
+  }
+
+  async function handleSignIn() {
+    setAuthError(null)
+    try {
+      await signInWithGoogle()
+    } catch (err) {
+      console.error('Sign-in failed', err)
+      setAuthError('Sign-in failed. Please try again.')
+    }
+  }
+
+  async function handleSignOut() {
+    await signOutUser()
+  }
+
+  async function handleDeleteAccount() {
+    if (!user) return
+    setAuthError(null)
+    try {
+      await deleteAccountCloud(user)
+    } catch (err) {
+      console.error('Account deletion failed', err)
+      setAuthError('Could not delete your account. Please try again.')
+    }
+  }
+
+  if (initializing) {
+    return <div className="app-header">Loading...</div>
   }
 
   return (
@@ -98,7 +222,11 @@ export default function App() {
       <header className="app-header">
         <div>
           <h1>LabMate</h1>
-          <div className="subtitle">Your pathology results, tracked over time - stored only in this browser.</div>
+          <div className="subtitle">
+            {activeUser
+              ? `Signed in as ${activeUser.email} - synced to your account.`
+              : 'Your pathology results, tracked over time - stored only in this browser.'}
+          </div>
         </div>
       </header>
 
@@ -161,7 +289,17 @@ export default function App() {
       {tab === 'upload' && <UploadFlow onImport={handleImport} />}
 
       {tab === 'settings' && (
-        <Settings profile={profile} onSaveProfile={handleSaveProfile} onDeleteAllData={handleDeleteAllData} />
+        <Settings
+          profile={profile}
+          onSaveProfile={handleSaveProfile}
+          onDeleteAllData={handleDeleteAllData}
+          user={user}
+          migrating={migrating}
+          authError={authError}
+          onSignIn={handleSignIn}
+          onSignOut={handleSignOut}
+          onDeleteAccount={handleDeleteAccount}
+        />
       )}
     </>
   )

@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function hasGrant(uid) {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/shares/$(uid + '_' + request.auth.uid)) &&
+        get(/databases/$(database)/documents/shares/$(uid + '_' + request.auth.uid)).data.revokedAt == null;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || hasGrant(uid);
+      allow write: if isOwner(uid);
+
+      match /results/{resultId} {
+        allow read: if isOwner(uid) || hasGrant(uid);
+        allow write: if isOwner(uid);
+      }
+
+      match /customMarkers/{key} {
+        allow read: if isOwner(uid) || hasGrant(uid);
+        allow write: if isOwner(uid);
+      }
+    }
+
+    match /shares/{shareId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.ownerUid || request.auth.uid == resource.data.granteeUid);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.ownerUid;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

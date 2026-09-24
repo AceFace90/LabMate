@@ -76,7 +76,10 @@ body {
    at a fixed desktop column width either, just keep readable edge padding. */
 #root {
   margin: 0 auto;
-  padding: 20px 20px 96px;
+  /* iOS Safari's translucent toolbar overlaps the top of the viewport when
+     scrolled to the top (only in-browser, not as an installed PWA) - push
+     content below it instead of letting the blur sit over the page title. */
+  padding: calc(20px + env(safe-area-inset-top)) 20px calc(96px + env(safe-area-inset-bottom));
 }
 
 .page-title {
@@ -104,7 +107,7 @@ nav.tabs {
   background: var(--surface-1);
   border-top: 1px solid var(--gridline);
   height: 64px;
-  padding-bottom: 8px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
 }
 
 nav.tabs button {
@@ -165,7 +168,92 @@ nav.tabs button.active .tab-icon {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
-.stat-tile .label {
+/* At phone widths, auto-fit leaves a lone last-row tile (e.g. Estimated
+   biological age) sized to one column instead of stretching full width -
+   stack instead of wrapping into an uneven row. */
+@media (max-width: 640px) {
+  .grid.cols-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ring-summary {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.ring-legend {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ring-legend-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 4px;
+  margin: -4px;
+  border-radius: 8px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ring-legend-row:hover {
+  background: var(--accent-bg);
+}
+
+.stat-tile-button {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 6px;
+  margin: -6px;
+  border-radius: 8px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.stat-tile-button:hover {
+  background: var(--accent-bg);
+}
+
+.ring-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.ring-center-value {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: proportional-nums;
+  line-height: 1.1;
+}
+
+.ring-center-delta {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.stat-tile .label,
+.ring-legend-row .label {
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 700;
@@ -174,22 +262,26 @@ nav.tabs button.active .tab-icon {
   margin-bottom: 6px;
 }
 
-.stat-tile .value {
+.stat-tile .value,
+.ring-legend-row .value {
   font-size: 32px;
   font-weight: 600;
   font-variant-numeric: proportional-nums;
 }
 
-.stat-tile .value.small {
+.stat-tile .value.small,
+.ring-legend-row .value.small {
   font-size: 20px;
 }
 
-.stat-tile .delta {
+.stat-tile .delta,
+.ring-legend-row .delta {
   font-size: 13px;
   margin-top: 4px;
 }
 
-.stat-tile .caveat {
+.stat-tile .caveat,
+.ring-legend-row .caveat {
   font-size: 11px;
   color: var(--text-muted);
   margin-top: 6px;
@@ -349,6 +441,11 @@ nav.tabs button.active .tab-icon {
 
 .range-bar {
   width: 140px;
+}
+
+.marker-card .range-bar {
+  width: 100%;
+  margin-top: 8px;
 }
 
 .range-bar-track {

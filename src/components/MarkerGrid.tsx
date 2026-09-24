@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CATEGORIES, MARKER_CATALOG } from '../data/markerCatalog'
 import { effectiveRange, latestResultByMarker, markerStatus } from '../lib/healthScore'
 import type { CustomMarker, MarkerResult, Profile } from '../types'
+import { RangeBar } from './RangeBar'
 
 interface Props {
   results: MarkerResult[]
@@ -25,7 +26,7 @@ export function MarkerGrid({ results, customMarkers, profile, onSelectMarker, on
         )
         if (markers.length === 0) return null
         return (
-          <div className="category-section card" key={cat.key}>
+          <div className="category-section card" key={cat.key} id={`category-${cat.key}`}>
             <h3>{cat.label}</h3>
             <p className="cat-desc">{cat.description}</p>
             <div className="marker-grid">
@@ -33,7 +34,8 @@ export function MarkerGrid({ results, customMarkers, profile, onSelectMarker, on
                 const r = latest.get(m.key)
                 const isGap = !r
                 const status = r ? markerStatus(r, m) : null
-                const isStandard = r ? effectiveRange(r, m).isStandard : false
+                const range = r ? effectiveRange(r, m) : null
+                const isStandard = range?.isStandard ?? false
                 return (
                   <button
                     key={m.key}
@@ -43,11 +45,16 @@ export function MarkerGrid({ results, customMarkers, profile, onSelectMarker, on
                   >
                     <div className="name">{m.label}</div>
                     {r ? (
-                      <div className="value-row">
-                        <span className={`status-dot ${status}${isStandard ? ' is-standard' : ''}`} />
-                        <span className="value">{r.displayValue}</span>
-                        <span className="unit">{r.unit || m.defaultUnit}</span>
-                      </div>
+                      <>
+                        <div className="value-row">
+                          <span className={`status-dot ${status}${isStandard ? ' is-standard' : ''}`} />
+                          <span className="value">{r.displayValue}</span>
+                          <span className="unit">{r.unit || m.defaultUnit}</span>
+                        </div>
+                        {r.value !== null && range && (range.low !== null || range.high !== null) && status && (
+                          <RangeBar value={r.value} low={range.low} high={range.high} status={status} isStandard={isStandard} />
+                        )}
+                      </>
                     ) : (
                       <div className="value">{m.manualOnly ? 'Log manually' : 'Not tested yet'}</div>
                     )}

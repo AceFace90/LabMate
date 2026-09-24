@@ -4,7 +4,12 @@ import { formatIsoDate } from '../lib/dates'
 import { firstNameOf, timeOfDayGreeting } from '../lib/greeting'
 import { coverageByCategory, lastUpdatedDate, latestResultByMarker, overallCoverage } from '../lib/healthScore'
 import type { MarkerResult, Profile } from '../types'
+import { ActivityRings } from './ActivityRings'
 import { Findings } from './Findings'
+
+function clamp01(n: number): number {
+  return Math.max(0, Math.min(1, n))
+}
 
 interface Props {
   results: MarkerResult[]
@@ -13,9 +18,11 @@ interface Props {
   nameFallback: string | null
   onGoToUpload: () => void
   onGoToSettings: () => void
+  /** Jump to the Markers tab, optionally scrolled to a specific category. */
+  onGoToMarkers: (categoryKey?: string) => void
 }
 
-export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoToSettings }: Props) {
+export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoToSettings, onGoToMarkers }: Props) {
   const [showBioAgeInfo, setShowBioAgeInfo] = useState(false)
   const [showCreatineInfo, setShowCreatineInfo] = useState(false)
   const overall = overallCoverage(results, profile.sex)
@@ -48,91 +55,125 @@ export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoTo
     )
   }
 
+  const bioAgeAvailable = !!bioAge && isBioAgeAvailable(bioAge)
+  const inRangeColor = overall.outOfRangeCount > 0 ? 'var(--status-serious)' : 'var(--status-good)'
+  const bioAgeColor =
+    bioAgeAvailable && bioAge ? (bioAge.delta <= 0 ? 'var(--status-good)' : 'var(--status-serious)') : 'var(--baseline)'
+
   return (
     <div>
       {greeting}
-      <div className="grid cols-3">
-        <div className="card stat-tile">
-          <div className="label">Markers with data</div>
-          <div className="value">
-            {overall.testedMarkers}
-            <span className="value small"> / {overall.totalMarkers}</span>
-          </div>
-          <div className="delta">
-            {lastUpdated ? `Last result ${formatIsoDate(lastUpdated)}` : 'No results yet'}
-          </div>
-          <div className="caveat">Everything else is a tracked gap - see below.</div>
-        </div>
-        <div className="card stat-tile">
-          <div className="label">In range (of tested)</div>
-          <div className="value">{overall.percentInRange ?? '—'}%</div>
-          {overall.testedMarkers > 0 && (
-            <div
-              className="delta"
-              style={{ color: overall.outOfRangeCount > 0 ? 'var(--status-serious)' : 'var(--status-good)' }}
-            >
-              {overall.outOfRangeCount > 0
-                ? `${overall.outOfRangeCount} marker${overall.outOfRangeCount === 1 ? '' : 's'} out of range`
-                : 'All tested markers in range'}
-            </div>
-          )}
-        </div>
-        <div className="card stat-tile">
-          <div className="label">
-            Estimated biological age{' '}
-            <button
-              type="button"
-              className="info-tip"
-              aria-expanded={showBioAgeInfo}
-              aria-label="About this estimate"
-              onClick={() => setShowBioAgeInfo((v) => !v)}
-            >
-              ⓘ
-            </button>
-          </div>
-          {!profile.birthDate ? (
+      <div className="card ring-summary">
+        <ActivityRings
+          rings={[
+            { percent: overall.totalMarkers > 0 ? clamp01(overall.testedMarkers / overall.totalMarkers) : 0, color: 'var(--series-1)' },
+            { percent: overall.testedMarkers > 0 ? clamp01((overall.percentInRange ?? 0) / 100) : 0, color: inRangeColor },
+          ]}
+          center={
+            bioAgeAvailable && bioAge ? (
+              <>
+                <span className="ring-center-value">{bioAge.phenoAge.toFixed(1)}</span>
+                <span className="ring-center-delta" style={{ color: bioAgeColor }}>
+                  {bioAge.delta <= 0 ? '−' : '+'}
+                  {Math.abs(bioAge.delta).toFixed(1)}y
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="ring-center-value" style={{ color: 'var(--text-muted)' }}>
+                  –
+                </span>
+                <span className="ring-center-delta">Bio age</span>
+              </>
+            )
+          }
+        />
+        <div className="ring-legend">
+          <button type="button" className="ring-legend-row" onClick={() => onGoToMarkers()}>
+            <span className="ring-dot" style={{ background: 'var(--series-1)' }} />
             <div>
-              <div className="caveat" style={{ marginBottom: 4 }}>Set your date of birth in Settings to see this.</div>
-              <button className="secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={onGoToSettings}>
-                Go to Settings
-              </button>
-            </div>
-          ) : bioAge && isBioAgeAvailable(bioAge) ? (
-            <>
-              <div className="value">{bioAge.phenoAge.toFixed(1)}</div>
-              <div className="delta" style={{ color: bioAge.delta <= 0 ? 'var(--status-good)' : 'var(--status-serious)' }}>
-                {bioAge.delta <= 0 ? '−' : '+'}
-                {Math.abs(bioAge.delta).toFixed(1)} yrs vs chronological age ({bioAge.chronologicalAge}) as of{' '}
-                {formatIsoDate(bioAge.asOfDate)}
+              <div className="label">Markers with data</div>
+              <div className="value">
+                {overall.testedMarkers}
+                <span className="value small"> / {overall.totalMarkers}</span>
               </div>
-              {bioAge.phenoAgeCreatineAdjusted !== undefined && (
-                <div
-                  className="delta"
-                  style={{
-                    marginTop: 4,
-                    color: bioAge.phenoAgeCreatineAdjusted < bioAge.phenoAge ? 'var(--status-good)' : 'var(--status-serious)',
-                  }}
-                >
-                  Creatine-adjusted: <strong>{bioAge.phenoAgeCreatineAdjusted.toFixed(1)}</strong>{' '}
-                  <button
-                    type="button"
-                    className="info-tip"
-                    aria-expanded={showCreatineInfo}
-                    aria-label="How the creatine-adjusted figure is derived"
-                    onClick={() => setShowCreatineInfo((v) => !v)}
-                  >
-                    ⓘ
-                  </button>
+              <div className="delta">
+                {lastUpdated ? `Last result ${formatIsoDate(lastUpdated)}` : 'No results yet'}
+              </div>
+            </div>
+          </button>
+
+          <button type="button" className="ring-legend-row" onClick={() => onGoToMarkers()}>
+            <span className="ring-dot" style={{ background: inRangeColor }} />
+            <div>
+              <div className="label">In range (of tested)</div>
+              <div className="value">{overall.percentInRange ?? '—'}%</div>
+              {overall.testedMarkers > 0 && (
+                <div className="delta" style={{ color: inRangeColor }}>
+                  {overall.outOfRangeCount > 0
+                    ? `${overall.outOfRangeCount} marker${overall.outOfRangeCount === 1 ? '' : 's'} out of range`
+                    : 'All tested markers in range'}
                 </div>
               )}
-            </>
-          ) : (
-            <>
-              <div className="value small">Need {bioAge?.missing.length} more markers</div>
-              <div className="caveat">Missing: {bioAge?.missing.map((m) => m.label).join(', ')}</div>
-            </>
-          )}
+            </div>
+          </button>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 12 }}>
+        <div className="label" style={{ marginBottom: 0 }}>
+          Estimated biological age{' '}
+          <button
+            type="button"
+            className="info-tip"
+            aria-expanded={showBioAgeInfo}
+            aria-label="About this estimate"
+            onClick={() => setShowBioAgeInfo((v) => !v)}
+          >
+            ⓘ
+          </button>
+        </div>
+        {!profile.birthDate ? (
+          <div style={{ marginTop: 6 }}>
+            <div className="caveat" style={{ marginBottom: 4 }}>Set your date of birth in Settings to see this.</div>
+            <button className="secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={onGoToSettings}>
+              Go to Settings
+            </button>
+          </div>
+        ) : bioAge && isBioAgeAvailable(bioAge) ? (
+          <>
+            <div className="delta" style={{ marginTop: 6, color: bioAgeColor }}>
+              {bioAge.delta <= 0 ? '−' : '+'}
+              {Math.abs(bioAge.delta).toFixed(1)} yrs vs chronological age ({bioAge.chronologicalAge}) as of{' '}
+              {formatIsoDate(bioAge.asOfDate)}
+            </div>
+            {bioAge.phenoAgeCreatineAdjusted !== undefined && (
+              <div
+                className="delta"
+                style={{
+                  marginTop: 4,
+                  color: bioAge.phenoAgeCreatineAdjusted < bioAge.phenoAge ? 'var(--status-good)' : 'var(--status-serious)',
+                }}
+              >
+                Creatine-adjusted: <strong>{bioAge.phenoAgeCreatineAdjusted.toFixed(1)}</strong>{' '}
+                <button
+                  type="button"
+                  className="info-tip"
+                  aria-expanded={showCreatineInfo}
+                  aria-label="How the creatine-adjusted figure is derived"
+                  onClick={() => setShowCreatineInfo((v) => !v)}
+                >
+                  ⓘ
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ marginTop: 6 }}>
+            <div className="value small">Need {bioAge?.missing.length} more markers</div>
+            <div className="caveat">Missing: {bioAge?.missing.map((m) => m.label).join(', ')}</div>
+          </div>
+        )}
       </div>
 
       {profile.birthDate && (
@@ -240,7 +281,12 @@ export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoTo
         <h3 style={{ marginTop: 0 }}>Coverage by category</h3>
         <div className="grid cols-3">
           {byCategory.map((c) => (
-            <div key={c.category} className="stat-tile">
+            <button
+              key={c.category}
+              type="button"
+              className="stat-tile stat-tile-button"
+              onClick={() => onGoToMarkers(c.category)}
+            >
               <div className="label">{c.label}</div>
               <div className="value small">
                 {c.testedMarkers}/{c.totalMarkers} tested
@@ -248,7 +294,7 @@ export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoTo
               {c.testedMarkers > 0 && (
                 <div className="caveat">{c.percentInRange}% in range</div>
               )}
-            </div>
+            </button>
           ))}
         </div>
       </div>

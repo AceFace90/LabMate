@@ -60,8 +60,22 @@ export default function App() {
   const [results, setResults] = useState<MarkerResult[]>(() => loadResults())
   const [profile, setProfile] = useState<Profile>(() => loadProfile())
   const [customMarkers, setCustomMarkers] = useState<CustomMarker[]>(() => loadCustomMarkers())
-  const [tab, setTab] = useState<Tab>(results.length ? 'dashboard' : 'upload')
+  const [tab, setTab] = useState<Tab>('dashboard')
   const [selectedMarker, setSelectedMarker] = useState<string | null>(null)
+  const [scrollToCategory, setScrollToCategory] = useState<string | null>(null)
+
+  const goToMarkers = (categoryKey?: string) => {
+    setSelectedMarker(null)
+    setTab('markers')
+    setScrollToCategory(categoryKey ?? null)
+  }
+
+  useEffect(() => {
+    if (tab !== 'markers' || !scrollToCategory) return
+    const el = document.getElementById(`category-${scrollToCategory}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setScrollToCategory(null)
+  }, [tab, scrollToCategory])
   const [cloudReady, setCloudReady] = useState(false)
   const [migrating, setMigrating] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
@@ -110,13 +124,6 @@ export default function App() {
       cancelled = true
     }
   }, [user])
-
-  // A signed-in user's home is always the dashboard - fires once when cloud data
-  // becomes available (not the results-length check the initial tab state uses,
-  // since that snapshot is taken before this user's cloud results have loaded).
-  useEffect(() => {
-    if (user && cloudReady) setTab('dashboard')
-  }, [user, cloudReady])
 
   useEffect(() => {
     if (!user || !cloudReady) return
@@ -299,6 +306,7 @@ export default function App() {
           nameFallback={user?.displayName ?? null}
           onGoToUpload={() => setTab('upload')}
           onGoToSettings={() => setTab('settings')}
+          onGoToMarkers={goToMarkers}
         />
       )}
 

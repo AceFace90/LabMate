@@ -119,7 +119,7 @@ export const MARKER_CATALOG: MarkerDef[] = [
   // Metabolic
   { key: 'glucose', label: 'Glucose', category: 'metabolic', defaultUnit: 'mmol/L', aliases: ['glucose'], description: 'Blood sugar level.' },
   { key: 'hba1c', label: 'HbA1c', category: 'metabolic', defaultUnit: '%', aliases: ['hba1c', 'haemoglobin a1c'], description: 'Average blood sugar over ~3 months.', standardRangeLow: 4.0, standardRangeHigh: 6.0, standardRangeText: '4.0 - 6.0' },
-  { key: 'insulin', label: 'Fasting Insulin', category: 'metabolic', defaultUnit: 'mU/L', aliases: ['insulin', 'fasting insulin'], description: 'Early signal of insulin resistance, often before glucose rises.', standardRangeLow: 2, standardRangeHigh: 25, standardRangeText: '2 - 25' },
+  { key: 'insulin', label: 'Fasting Insulin', category: 'metabolic', defaultUnit: 'mU/L', aliases: ['insulin', 'fasting insulin', 'serum insulin'], description: 'Early signal of insulin resistance, often before glucose rises.', standardRangeLow: 2, standardRangeHigh: 25, standardRangeText: '2 - 25' },
 
   // Heart / lipids
   { key: 'total_cholesterol', label: 'Total Cholesterol', category: 'heart_lipids', defaultUnit: 'mmol/L', aliases: ['total chol.', 'total cholesterol'], description: 'Overall cholesterol carried in the blood.', standardRangeLow: null, standardRangeHigh: 5.5, standardRangeText: '< 5.5' },
@@ -131,7 +131,7 @@ export const MARKER_CATALOG: MarkerDef[] = [
   { key: 'chol_hdl_ratio', label: 'Chol/HDL Ratio', category: 'heart_lipids', aliases: ['chol/hdl ratio'], description: 'Overall cardiovascular risk ratio.', standardRangeLow: null, standardRangeHigh: 5.0, standardRangeText: '< 5.0' },
   { key: 'lp_a', label: 'Lp(a)', category: 'heart_lipids', defaultUnit: 'nmol/L', aliases: ['lp(a)', 'lipoprotein(a)', 'lipoprotein a'], description: 'Largely genetic cardiovascular risk marker, not routinely tested. No standard range shown - units vary by assay (mg/dL vs nmol/L) too much to default safely.' },
   { key: 'apob', label: 'ApoB', category: 'heart_lipids', defaultUnit: 'g/L', aliases: ['apob', 'apo b', 'apolipoprotein b'], description: 'Counts atherogenic particles directly; often more predictive than LDL alone.', standardRangeLow: 0.4, standardRangeHigh: 1.0, standardRangeText: '0.4 - 1.0' },
-  { key: 'hs_crp', label: 'hs-CRP', category: 'heart_lipids', defaultUnit: 'mg/L', aliases: ['hs-crp', 'hs crp', 'high sensitivity crp', 'c-reactive protein'], description: 'Sensitive marker of vascular inflammation.', standardRangeLow: null, standardRangeHigh: 3.0, standardRangeText: '< 3.0' },
+  { key: 'hs_crp', label: 'hs-CRP', category: 'heart_lipids', defaultUnit: 'mg/L', aliases: ['hs-crp', 'hs crp', 'hscrp', 'high sensitivity crp', 'c-reactive protein'], description: 'Sensitive marker of vascular inflammation.', standardRangeLow: null, standardRangeHigh: 3.0, standardRangeText: '< 3.0' },
   { key: 'homocysteine', label: 'Homocysteine', category: 'heart_lipids', defaultUnit: 'umol/L', aliases: ['homocysteine'], description: 'Amino acid linked to cardiovascular and cognitive risk when elevated.' },
 
   // Blood & bone marrow

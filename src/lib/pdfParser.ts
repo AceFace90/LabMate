@@ -21,10 +21,23 @@ const SKIP_LINE_PREFIX_RE = /^(Date|Time|Coll\.\s*Time|Lab Number|Lab#|Request):
 // Repeated page letterhead / patient-header lines. These reappear at the top of every
 // page and must reset any in-progress table state, or ID numbers and addresses on them
 // get misread as data rows (e.g. a Medicare number bucketed into a wide-table column).
-const PAGE_RESET_RE = /^(Page\s+\d+\s+of\s+\d+|Laboratory:|Addressee:|Your Reference:|Phone:|Birthdate:|Fax:|Copy to:)/i
+const PAGE_RESET_RE = /^(Page\s+\d+\s+of\s+\d+|Laboratory:|Addressee:|Your Reference:|Phone:|Birthdate:|Fax:|Copy to:|CC DRS:|PANEL CODES:)/i
+// Column-label lines in single-result reports ("Collection Time 09:05", "Request 26-...",
+// "Units Reference Range", the patient footer) - never data rows.
+const HEADER_LABEL_LINE_RE = /^(PATIENT:|Collection Time\s|Request\s+\d|Units\s+Reference Range)/i
 // A sane upper bound on digit count for a numeric wide-table value - lab results are
 // short (e.g. "149", "4.99"); phone/Medicare/reference numbers on letterhead are not.
 const MAX_VALUE_DIGITS = 6
+
+// Column-style single-panel table (e.g. INSULIN STUDIES): a "Date Time Request <Marker...>"
+// header, one row per collection date with values under each marker column, then
+// "Units" and "Reference Ranges" rows aligned to the same columns.
+interface ColumnTableState {
+  headerTokens: { text: string; x: number }[]
+  columns: { x: number; name: string; unit: string; rangeText: string }[]
+  rows: { date: string; values: { colIdx: number; text: string }[] }[]
+  panel: string
+}
 
 interface LongTableState {
   markerKey: string | null
@@ -74,6 +87,10 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
   let currentCollectedDate: string | null = null
   let wideTable: { dates: { iso: string; x: number }[] } | null = null
   let longTable: LongTableState | null = null
+  let columnTable: ColumnTableState | null = null
+  // Results whose printed range was "See below" - filled from a following
+  // "Fasting <low> - <high>" reference line in the comments, if one appears.
+  let awaitingRange: MarkerResult[] = []
   // True while inside a trailing explanatory-note block (e.g. "Recommended targets
   // for high risk patients", B12 deficiency-risk guidance). These blocks have no
   // single closing marker, so every line is skipped outright - including single-value
@@ -104,6 +121,36 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
     longTable = null
   }
 
+  const flushColumnTable = () => {
+    if (!columnTable) return
+    for (const row of columnTable.rows) {
+      for (const v of row.values) {
+        const col = columnTable.columns[v.colIdx]
+        const parsed = parseValueToken(v.text)
+        if (!col?.name || !parsed) continue
+        const marker = findMarkerByAlias(col.name)
+        const range = parseRangeText(col.rangeText)
+        const result = makeResult({
+          markerKey: marker?.key ?? `unmatched:${slugify(col.name)}`,
+          rawName: col.name,
+          date: row.date,
+          value: parsed.value,
+          displayValue: parsed.displayValue,
+          flag: parsed.flag,
+          rangeLow: range.rangeLow,
+          rangeHigh: range.rangeHigh,
+          rangeText: range.rangeLow !== null || range.rangeHigh !== null ? col.rangeText : '',
+          unit: col.unit || marker?.defaultUnit || '',
+          sourceFile: fileName,
+          panel: columnTable.panel,
+        })
+        results.push(result)
+        if (/see below/i.test(col.rangeText)) awaitingRange.push(result)
+      }
+    }
+    columnTable = null
+  }
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
     const text = line.text.trim()
@@ -112,6 +159,8 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
     const nameOfTest = text.match(/Name of Test:\s*(.+)/i)
     if (nameOfTest) {
       flushLongTable()
+      flushColumnTable()
+      awaitingRange = []
       currentPanel = nameOfTest[1].trim()
       wideTable = null
       inNoteBlock = false
@@ -119,6 +168,8 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
     }
 
     if (FOOTER_CODE_LINE_RE.test(text) || /^This request has other tests/i.test(text) || PAGE_RESET_RE.test(text)) {
+      flushColumnTable()
+      awaitingRange = []
       wideTable = null
       inNoteBlock = false
       continue
@@ -135,6 +186,63 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
       continue
     }
     if (inNoteBlock) continue
+
+    if (awaitingRange.length > 0) {
+      const fasting = text.match(/^Fasting\s+(-?\d+\.?\d*)\s*-\s*(-?\d+\.?\d*)/i)
+      if (fasting) {
+        for (const r of awaitingRange) {
+          r.rangeLow = Number(fasting[1])
+          r.rangeHigh = Number(fasting[2])
+          r.rangeText = `${fasting[1]} - ${fasting[2]} (fasting)`
+        }
+        awaitingRange = []
+        continue
+      }
+    }
+
+    // --- Column-style table (header "Date Time Request <markers>") ---
+    const headerWords = line.tokens.slice(0, 3).map((t) => t.text.toLowerCase())
+    if (headerWords.join(' ') === 'date time request' && line.tokens.length > 3) {
+      flushColumnTable()
+      columnTable = { headerTokens: line.tokens.slice(3), columns: [], rows: [], panel: currentPanel }
+      wideTable = null
+      continue
+    }
+    if (columnTable) {
+      const first = line.tokens[0]?.text ?? ''
+      if (DATE_RE.test(first)) {
+        const iso = ausDateToIso(first)
+        // Values sit after the date, time and request-number columns.
+        const valueTokens = line.tokens.slice(3)
+        if (iso && valueTokens.length > 0) {
+          if (columnTable.columns.length === 0) {
+            // Anchor each column at its value's x; header words left of the next
+            // anchor belong to the previous column (e.g. "Serum Insulin").
+            columnTable.columns = valueTokens.map((t) => ({ x: t.x, name: '', unit: '', rangeText: '' }))
+            for (const h of columnTable.headerTokens) {
+              const idx = nearestColumnAtOrLeft(columnTable.columns, h.x)
+              const col = columnTable.columns[idx]
+              col.name = col.name ? `${col.name} ${h.text}` : h.text
+            }
+          }
+          columnTable.rows.push({
+            date: iso,
+            values: valueTokens.map((t) => ({ colIdx: nearestColumnAtOrLeft(columnTable!.columns, t.x), text: t.text })),
+          })
+          continue
+        }
+      }
+      const rowLabel = /^Units\b/i.test(text) ? 'unit' : /^Reference Ranges?\b/i.test(text) ? 'rangeText' : null
+      if (rowLabel && columnTable.columns.length > 0) {
+        const skip = rowLabel === 'unit' ? 1 : /^Reference Ranges?\s/i.test(text) ? 2 : 1
+        for (const t of line.tokens.slice(skip)) {
+          const col = columnTable.columns[nearestColumnAtOrLeft(columnTable.columns, t.x)]
+          col[rowLabel] = col[rowLabel] ? `${col[rowLabel]} ${t.text}` : t.text
+        }
+        continue
+      }
+      flushColumnTable()
+    }
 
     const collected = text.match(/Collected:\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i)
     if (collected) {
@@ -197,8 +305,41 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
       }
     }
 
-    if (SKIP_LINE_PREFIX_RE.test(text) || DASH_LINE_RE.test(text.replace(/\s/g, ''))) {
+    // A free-text comments section ends the result table above it.
+    if (/^Comments:/i.test(text)) {
+      wideTable = null
       continue
+    }
+
+    if (SKIP_LINE_PREFIX_RE.test(text) || HEADER_LABEL_LINE_RE.test(text) || DASH_LINE_RE.test(text.replace(/\s/g, ''))) {
+      continue
+    }
+
+    // --- Single-result row with an unbracketed range or "see below"
+    // (e.g. "Magnesium 0.91 mmol/L 0.70 - 1.10", "hsCRP 7.7 mg/L see below") ---
+    if (!longTable && (!wideTable || wideTable.dates.length === 1)) {
+      const date = wideTable ? wideTable.dates[0].iso : currentCollectedDate
+      const row = date ? parseUnbracketedRow(text) : null
+      if (row && date) {
+        const marker = findMarkerByAlias(row.name)
+        results.push(
+          makeResult({
+            markerKey: marker?.key ?? `unmatched:${slugify(row.name)}`,
+            rawName: row.name,
+            date,
+            value: row.value,
+            displayValue: row.displayValue,
+            flag: row.flag,
+            rangeLow: row.rangeLow,
+            rangeHigh: row.rangeHigh,
+            rangeText: row.rangeText,
+            unit: row.unit || marker?.defaultUnit || '',
+            sourceFile: fileName,
+            panel: currentPanel,
+          }),
+        )
+        continue
+      }
     }
 
     // --- Wide table data row ---
@@ -224,7 +365,8 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
             }),
           )
         }
-        if (!parsed.values.length && parsed.name) {
+        // Single letters are the rotated department name printed down the page margin.
+        if (!parsed.values.length && parsed.name.length > 1) {
           warnings.push(`Could not read a value for "${parsed.name}" in ${currentPanel} (${fileName})`)
         }
         continue
@@ -256,6 +398,7 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
     }
   }
   flushLongTable()
+  flushColumnTable()
 
   return { results, warnings }
 }
@@ -272,6 +415,46 @@ function parseLongTableRow(line: Line): { date: string; value: number; collectio
   // or the backfill lookup ("Random serum") never matches ("Random").
   const collectionType = tokens.slice(3, tokens.length - 2).join(' ')
   return { date: iso, value: Number(last), collectionType }
+}
+
+function nearestColumnAtOrLeft(columns: { x: number }[], x: number): number {
+  // Small tolerance: text in the same column can start a few units left of its anchor.
+  let idx = 0
+  columns.forEach((c, i) => {
+    if (c.x <= x + 8) idx = i
+  })
+  return idx
+}
+
+/** Parses a value token that may carry a leading "<"/">" or a glued abnormal flag (e.g. "23.3**"). */
+function parseValueToken(text: string): { value: number; displayValue: string; flag: '' | '*' | '**' } | null {
+  const m = text.match(/^([<>]?)(-?\d+(?:\.\d+)?)(\*{0,2})$/)
+  if (!m) return null
+  return { value: Number(m[2]), displayValue: m[1] ? `${m[1]} ${m[2]}` : m[2], flag: m[3] as '' | '*' | '**' }
+}
+
+function parseUnbracketedRow(text: string): {
+  name: string
+  value: number
+  displayValue: string
+  flag: '' | '*' | '**'
+  unit: string
+  rangeLow: number | null
+  rangeHigh: number | null
+  rangeText: string
+} | null {
+  // name, value (optional op / glued flag), unit (must contain a letter or %), then
+  // either a bare "low - high" / "< n" range or the words "see below".
+  const m = text.match(
+    /^([A-Za-z][A-Za-z0-9 ./\-]*?)\s+([<>]?\s*-?\d+(?:\.\d+)?\*{0,2})\s+(\S*[A-Za-z%µμ]\S*)\s+(-?\d+(?:\.\d+)?\s*-\s*-?\d+(?:\.\d+)?|[<>]=?\s*-?\d+(?:\.\d+)?|see below)$/i,
+  )
+  if (!m) return null
+  const [, name, rawValue, unit, rangePart] = m
+  const parsed = parseValueToken(rawValue.replace(/\s+/g, ''))
+  if (!parsed) return null
+  const seeBelow = /see below/i.test(rangePart)
+  const range = seeBelow ? { rangeLow: null, rangeHigh: null } : parseRangeText(rangePart)
+  return { name: name.trim(), ...parsed, unit, ...range, rangeText: seeBelow ? '' : rangePart }
 }
 
 function parseSingleValueLine(text: string): {

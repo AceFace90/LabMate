@@ -182,7 +182,10 @@ export default function App() {
     }
   }
 
-  function handleEditResult(id: string, patch: { date: string; value: number; displayValue: string }) {
+  function handleEditResult(
+    id: string,
+    patch: Pick<MarkerResult, 'date' | 'displayValue' | 'rangeLow' | 'rangeHigh' | 'rangeText'> & { value: number },
+  ) {
     if (user) {
       updateResultCloud(user.uid, id, patch).catch(reportCloudError)
     } else {

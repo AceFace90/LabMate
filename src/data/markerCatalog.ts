@@ -102,6 +102,9 @@ export const MARKER_CATALOG: MarkerDef[] = [
 
   // Liver
   { key: 'total_protein', label: 'Total Protein', category: 'liver', defaultUnit: 'g/L', aliases: ['t.protein', 'total protein'], description: 'Overall protein levels in blood.', standardRangeLow: 60, standardRangeHigh: 80, standardRangeText: '60 - 80' },
+  { key: 'urine_albumin', label: 'Urine Albumin', category: 'electrolytes_kidney', defaultUnit: 'mg/L', aliases: ['urine albumin', 'microalbumin'], description: 'Protein leaking into the urine - an early sign of kidney stress.' },
+  { key: 'urine_creatinine', label: 'Urine Creatinine', category: 'electrolytes_kidney', defaultUnit: 'mmol/L', aliases: ['urine creatinine'], description: 'Used to correct urine albumin for how concentrated the sample is.' },
+  { key: 'urine_acr', label: 'Albumin/Creatinine Ratio (urine)', category: 'electrolytes_kidney', defaultUnit: 'mg/mmol', aliases: ['urine alb/creat ratio', 'urine albumin/creatinine ratio', 'urine acr', 'acr'], description: 'Urine albumin relative to creatinine - the standard kidney-damage screen.', standardRangeLow: null, standardRangeHigh: 2.5, standardRangeText: '< 2.5' },
   { key: 'albumin', label: 'Albumin', category: 'liver', defaultUnit: 'g/L', aliases: ['albumin'], description: 'Main blood protein made by the liver.', standardRangeLow: 35, standardRangeHigh: 50, standardRangeText: '35 - 50' },
   { key: 'globulin', label: 'Globulin', category: 'liver', defaultUnit: 'g/L', aliases: ['globulin'], description: 'Immune-related proteins.', standardRangeLow: 20, standardRangeHigh: 35, standardRangeText: '20 - 35' },
   { key: 'alp', label: 'ALP', category: 'liver', defaultUnit: 'U/L', aliases: ['alp', 'alkaline phosphatase'], description: 'Liver and bone enzyme.', standardRangeLow: 30, standardRangeHigh: 120, standardRangeText: '30 - 120' },
@@ -131,7 +134,8 @@ export const MARKER_CATALOG: MarkerDef[] = [
   { key: 'chol_hdl_ratio', label: 'Chol/HDL Ratio', category: 'heart_lipids', aliases: ['chol/hdl ratio'], description: 'Overall cardiovascular risk ratio.', standardRangeLow: null, standardRangeHigh: 5.0, standardRangeText: '< 5.0' },
   { key: 'lp_a', label: 'Lp(a)', category: 'heart_lipids', defaultUnit: 'nmol/L', aliases: ['lp(a)', 'lipoprotein(a)', 'lipoprotein a'], description: 'Largely genetic cardiovascular risk marker, not routinely tested. No standard range shown - units vary by assay (mg/dL vs nmol/L) too much to default safely.' },
   { key: 'apob', label: 'ApoB', category: 'heart_lipids', defaultUnit: 'g/L', aliases: ['apob', 'apo b', 'apolipoprotein b'], description: 'Counts atherogenic particles directly; often more predictive than LDL alone.', standardRangeLow: 0.4, standardRangeHigh: 1.0, standardRangeText: '0.4 - 1.0' },
-  { key: 'hs_crp', label: 'hs-CRP', category: 'heart_lipids', defaultUnit: 'mg/L', aliases: ['hs-crp', 'hs crp', 'hscrp', 'high sensitivity crp', 'c-reactive protein'], description: 'Sensitive marker of vascular inflammation.', standardRangeLow: null, standardRangeHigh: 3.0, standardRangeText: '< 3.0' },
+  { key: 'hs_crp', label: 'hs-CRP', category: 'heart_lipids', defaultUnit: 'mg/L', aliases: ['hs-crp', 'hs crp', 'hscrp', 'high sensitivity crp'], description: 'Sensitive marker of vascular inflammation.', standardRangeLow: null, standardRangeHigh: 3.0, standardRangeText: '< 3.0' },
+  { key: 'crp', label: 'CRP', category: 'heart_lipids', defaultUnit: 'mg/L', aliases: ['crp', 'c-reactive protein', 'c reactive protein'], description: 'General inflammation marker (standard assay - not the high-sensitivity test used for cardiac risk).', standardRangeLow: null, standardRangeHigh: 5.0, standardRangeText: '< 5.0' },
   { key: 'homocysteine', label: 'Homocysteine', category: 'heart_lipids', defaultUnit: 'umol/L', aliases: ['homocysteine'], description: 'Amino acid linked to cardiovascular and cognitive risk when elevated.' },
 
   // Blood & bone marrow
@@ -208,6 +212,8 @@ function normalizeMarkerName(name: string): string {
 
 export function findMarkerByAlias(rawName: string): MarkerDef | undefined {
   const normalized = normalizeMarkerName(rawName)
+  // An empty name would prefix-match every alias (returning the first catalog entry).
+  if (!normalized) return undefined
   const exact = MARKER_CATALOG.find((m) => m.aliases.some((a) => normalizeMarkerName(a) === normalized))
   if (exact) return exact
   // Labs sometimes print abbreviated/re-standardised variants of a name we already

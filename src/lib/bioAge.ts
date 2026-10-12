@@ -9,11 +9,15 @@ import { cystatinCEgfr, normalisedCreatinineFromCystatinC } from './kidneyFuncti
  * (Levine et al., 2018, "An epigenetic biomarker of aging for lifespan and
  * healthspan", Aging (Albany NY)).
  *
- * IMPORTANT: the coefficients below are reproduced from general knowledge of the
- * published formula, not re-verified against the paper in this session. Treat this
- * as an illustrative estimate, not a clinical or diagnostic result - and don't
- * confuse it with Everlab's (or any other service's) proprietary biological-age
- * score, which uses a different, undisclosed method.
+ * Weights and units checked against the paper's Table 1
+ * (https://pmc.ncbi.nlm.nih.gov/articles/PMC5940111/); the intercept and the
+ * mortality-score -> years constants against the BioAge R package's implementation
+ * (https://github.com/dayoonkwon/BioAge/blob/master/R/phenoage_calc.R), as the
+ * paper's supplement wasn't retrievable. Inputs are blood/serum markers - CRP in the
+ * model is mg/dL (labs report mg/L, converted below). Treat this as an illustrative
+ * estimate, not a clinical or diagnostic result - and don't confuse it with Everlab's
+ * (or any other service's) proprietary biological-age score, which uses a different,
+ * undisclosed method.
  */
 const PHENOAGE_INPUTS = [
   { key: 'albumin', label: 'Albumin', unit: 'g/L' },
@@ -50,7 +54,8 @@ function phenoAgeFromInputs(inputs: PhenoInputs, chronologicalAge: number): numb
     -0.0336 * inputs.albumin +
     0.0095 * inputs.creatinine +
     0.1953 * inputs.glucose +
-    0.0954 * Math.log(Math.max(inputs.hs_crp, 0.01)) +
+    // The model takes ln(CRP in mg/dL); results are stored in mg/L as labs print them.
+    0.0954 * Math.log(Math.max(inputs.hs_crp / 10, 0.001)) +
     -0.012 * inputs.lymphocyte_percent +
     0.0268 * inputs.mcv +
     0.3306 * inputs.rdw +
@@ -60,7 +65,7 @@ function phenoAgeFromInputs(inputs: PhenoInputs, chronologicalAge: number): numb
 
   const gamma = 0.0076927
   const mortalityScore = 1 - Math.exp((-Math.exp(xb) * (Math.exp(gamma * 120) - 1)) / gamma)
-  return 141.50225 + Math.log(-0.00553 * Math.log(1 - mortalityScore)) / 0.09165
+  return 141.50225 + Math.log(-0.0055305 * Math.log(1 - mortalityScore)) / 0.090165
 }
 
 function referencePoint(range: { low: number | null; high: number | null }): number | null {
@@ -131,7 +136,15 @@ export function computeBioAge(
   birthDate: string,
   profile?: { takesCreatineSupplement?: boolean; sex?: 'M' | 'F' | null },
 ): BioAgeResult | BioAgeUnavailable {
-  const missing = PHENOAGE_INPUTS.filter((i) => !latestByMarker.has(i.key)).map((i) => ({ key: i.key, label: i.label }))
+  // PhenoAge needs blood creatinine (umol/L). A urine creatinine (mmol/L) mis-filed
+  // under this marker by an older import would otherwise swing the estimate by years.
+  const creatinine = latestByMarker.get('creatinine')
+  const creatinineUnit = (creatinine?.unit ?? '').toLowerCase().replace(/[µμ]/g, 'u').replace(/\s/g, '')
+  const usable = (key: string) => latestByMarker.has(key) && (key !== 'creatinine' || creatinineUnit === '' || creatinineUnit === 'umol/l')
+  const missing = PHENOAGE_INPUTS.filter((i) => !usable(i.key)).map((i) => ({
+    key: i.key,
+    label: i.key === 'creatinine' && latestByMarker.has(i.key) ? 'Creatinine (blood, umol/L)' : i.label,
+  }))
   if (missing.length > 0) return { missing }
 
   const used: Record<string, MarkerResult> = {}

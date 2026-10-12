@@ -25,6 +25,7 @@ interface Props {
 export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoToSettings, onGoToMarkers }: Props) {
   const [showBioAgeInfo, setShowBioAgeInfo] = useState(false)
   const [showCreatineInfo, setShowCreatineInfo] = useState(false)
+  const [showInflammationInfo, setShowInflammationInfo] = useState(false)
   const overall = overallCoverage(results, profile.sex)
   const lastUpdated = lastUpdatedDate(results)
   const byCategory = coverageByCategory(results, profile.sex)
@@ -167,6 +168,20 @@ export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoTo
                 </button>
               </div>
             )}
+            {bioAge.phenoAgeInflammationAdjusted !== undefined && (
+              <div className="delta" style={{ marginTop: 4, color: 'var(--text-secondary)' }}>
+                Inflammation-adjusted (what-if): <strong>{bioAge.phenoAgeInflammationAdjusted.toFixed(1)}</strong>{' '}
+                <button
+                  type="button"
+                  className="info-tip"
+                  aria-expanded={showInflammationInfo}
+                  aria-label="How the inflammation-adjusted figure is derived"
+                  onClick={() => setShowInflammationInfo((v) => !v)}
+                >
+                  ⓘ
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <div style={{ marginTop: 6 }}>
@@ -187,11 +202,27 @@ export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoTo
               <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5940111/" target="_blank" rel="noreferrer">
                 primary paper
               </a>
-              . This app's implementation is reproduced from general knowledge of the published coefficients, not
-              independently re-derived or audited line-by-line against it here - treat the result as illustrative,
-              not diagnostic or medical advice.
+              . Coefficients are checked against the paper and the BioAge R package's implementation - treat the
+              result as illustrative, not diagnostic or medical advice.
             </div>
           )}
+
+          {showInflammationInfo &&
+            bioAge &&
+            isBioAgeAvailable(bioAge) &&
+            bioAge.phenoAgeInflammationAdjusted !== undefined && (
+              <div className="card" style={{ marginTop: 12, fontSize: 12, lineHeight: 1.5 }}>
+                hs-CRP, white cell count and lymphocyte % move sharply with short-term events like surgery or
+                infection, which push CRP and white cells up and lymphocyte % down. This figure reruns the same
+                PhenoAge formula with any of them that's out of range in that direction capped at the edge of its
+                normal range:{' '}
+                {bioAge.inflammationCapped.map((c) => `${c.label} ${c.value} → ${c.cappedAt} ${c.unit}`).join(', ')}.
+                It can only remove an inflammation effect, never add one. The headline number keeps your real
+                readings, on purpose - PhenoAge was validated against them, and this adjustment isn't a validated
+                model. Use it to tell a temporary spike from a long-term trend; if the gap persists across retests,
+                the inflammation is probably not short-term.
+              </div>
+            )}
 
           {profile.takesCreatineSupplement && !profile.sex && (
             <div className="card" style={{ marginTop: 12, fontSize: 12, color: 'var(--status-serious)' }}>

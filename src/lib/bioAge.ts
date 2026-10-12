@@ -34,6 +34,16 @@ const PHENOAGE_INPUTS = [
 type PhenoAgeKey = (typeof PHENOAGE_INPUTS)[number]['key']
 type PhenoInputs = Record<PhenoAgeKey, number>
 
+// Markers that swing with acute inflammation (surgery, infection) rather than long-term ageing,
+// and the direction inflammation pushes each one: CRP and white cells rise, while lymphocyte %
+// falls as neutrophils surge. Albumin also drops in acute illness, but it's equally a
+// nutrition/liver marker, so it's left as-is.
+const INFLAMMATION_DIRECTIONS: Partial<Record<PhenoAgeKey, 'high' | 'low'>> = {
+  hs_crp: 'high',
+  wcc: 'high',
+  lymphocyte_percent: 'low',
+}
+
 // General, non-personalised levers commonly associated with each marker. Not medical
 // advice - directional starting points to discuss with a doctor, not a treatment plan.
 const IMPROVEMENT_TIPS: Record<PhenoAgeKey, string> = {
@@ -87,6 +97,15 @@ export interface BioAgeContribution {
   tip: string
 }
 
+export interface BioAgeCappedMarker {
+  key: PhenoAgeKey
+  label: string
+  unit: string
+  value: number
+  /** The range limit the value was capped at for the inflammation-adjusted what-if. */
+  cappedAt: number
+}
+
 export interface BioAgeResult {
   phenoAge: number
   chronologicalAge: number
@@ -125,6 +144,17 @@ export interface BioAgeResult {
    * and have a Cystatin C result.
    */
   phenoAgeCreatineAdjusted?: number
+  /**
+   * What the same, unmodified PhenoAge formula would output with any inflammation marker
+   * that's out of range in the inflammatory direction (high hs-CRP or white cell count,
+   * low lymphocyte %) capped at the edge of its normal range - shown alongside (never in
+   * place of) the real phenoAge above, only when at least one marker was capped, so a
+   * short-term spike (surgery, infection) can be told apart from a long-term trend. A
+   * what-if, not a validated model.
+   */
+  phenoAgeInflammationAdjusted?: number
+  /** The markers capped for phenoAgeInflammationAdjusted, with their real values. */
+  inflammationCapped: BioAgeCappedMarker[]
 }
 
 export interface BioAgeUnavailable {
@@ -156,6 +186,28 @@ export function computeBioAge(
   const chronologicalAge = ageInYears(birthDate, asOfDate)
 
   const phenoAge = phenoAgeFromInputs(inputs, chronologicalAge)
+
+  // Inflammation what-if: cap each inflammation marker that's out of range in the
+  // direction inflammation pushes it at that edge of its own normal range (the lab's
+  // printed range if it has one), not the middle - the smallest change that takes it out
+  // of "abnormal". Everything else is left as-is, so this can only ever remove an
+  // inflammation effect, never add one.
+  const cappedInputs: PhenoInputs = { ...inputs }
+  const inflammationCapped: BioAgeCappedMarker[] = []
+  for (const [key, direction] of Object.entries(INFLAMMATION_DIRECTIONS) as [PhenoAgeKey, 'high' | 'low'][]) {
+    const range = effectiveRange(used[key], getMarker(key))
+    const value = inputs[key]
+    const cappedAt =
+      direction === 'high'
+        ? range.high !== null && value > range.high ? range.high : null
+        : range.low !== null && value < range.low ? range.low : null
+    if (cappedAt === null) continue
+    cappedInputs[key] = cappedAt
+    const input = PHENOAGE_INPUTS.find((i) => i.key === key)!
+    inflammationCapped.push({ key, label: input.label, unit: input.unit, value, cappedAt })
+  }
+  const phenoAgeInflammationAdjusted =
+    inflammationCapped.length > 0 ? phenoAgeFromInputs(cappedInputs, chronologicalAge) : undefined
 
   // If we have a Cystatin C result and know sex, derive a creatine-adjusted biological
   // age: Cystatin C -> eGFR (unaffected by creatine) -> invert the standard creatinine
@@ -246,6 +298,8 @@ export function computeBioAge(
     cystatinCEgfr: cystatinEgfr,
     normalisedCreatinine,
     phenoAgeCreatineAdjusted,
+    phenoAgeInflammationAdjusted,
+    inflammationCapped,
   }
 }
 

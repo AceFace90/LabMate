@@ -694,8 +694,14 @@ function parseSingleValueLine(text: string): {
   rangeHigh: number | null
   rangeText: string
 } | null {
-  const m = text.match(/^([A-Za-z][A-Za-z0-9 ./\-]*?)\s+([<>]?\s*-?\d+(?:\.\d+)?)\s*([A-Za-z%/^0-9.]*)\s*\(([^)]*)\)\s*$/)
-  if (!m) return null
+  // Names may carry their own parentheses ("Lp(a)") - the range is the last "(...)".
+  const m = text.match(/^([A-Za-z][A-Za-z0-9 ./\-]*(?:\([A-Za-z0-9]+\))?)\s+([<>]?\s*-?\d+(?:\.\d+)?)\s*([A-Za-z%/^0-9.]*)\s*\(([^)]*)\)\s*$/)
+  if (!m) {
+    // Ratios are often printed bare, with no unit or range ("ApoB/A1 Ratio  0.52").
+    const ratio = text.match(/^([A-Za-z][A-Za-z0-9 ./\-]*\bRatio)\s+(-?\d+(?:\.\d+)?)$/i)
+    if (!ratio) return null
+    return { name: ratio[1].trim(), value: Number(ratio[2]), displayValue: ratio[2], unit: '', rangeLow: null, rangeHigh: null, rangeText: '' }
+  }
   const [, name, rawValue, unit, rangeText] = m
   const numeric = Number(rawValue.replace(/[<>]/g, '').trim())
   if (Number.isNaN(numeric)) return null

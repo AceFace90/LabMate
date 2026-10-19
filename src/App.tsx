@@ -346,7 +346,7 @@ export default function App() {
 
       {tab === 'upload' && (
         <>
-          <PageHeader title="Import PDF" subtitle="Add a new pathology report." />
+          <PageHeader title="Import PDF" subtitle="Add a new pathology report - import the PDF or paste its text." />
           <UploadFlow onImport={handleImport} />
         </>
       )}

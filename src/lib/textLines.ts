@@ -43,6 +43,31 @@ export function groupItemsIntoLines(items: RawTextItem[]): Line[] {
   return lines
 }
 
+// Approximate width of one character in PDF points, so pasted text's character columns land
+// on a similar x scale to a real PDF's and the parser's column alignment still works.
+const PASTED_CHAR_WIDTH = 5
+
+/**
+ * Turns pasted report text into the same Line shape as a PDF, so it can go through the
+ * same parser. Token x is the character column (tabs, as copied from web tables, expanded
+ * to the next 8-column stop), which keeps monospaced/tabbed table columns aligned.
+ */
+export function textToLines(text: string): Line[] {
+  const lines: Line[] = []
+  const rows = text.replace(/\r\n?/g, '\n').split('\n')
+  rows.forEach((row, i) => {
+    let expanded = ''
+    for (const ch of row) expanded += ch === '\t' ? ' '.repeat(8 - (expanded.length % 8)) + ' ' : ch
+    const tokens = splitWithOffsets(expanded)
+      .filter((t) => t.text.trim())
+      .map((t) => ({ text: t.text, x: t.offset * PASTED_CHAR_WIDTH }))
+    if (tokens.length === 0) return
+    // Descending y, matching PDF line order (top of the page has the highest y).
+    lines.push({ y: (rows.length - i) * 12, tokens, text: tokens.map((t) => t.text).join(' ') })
+  })
+  return lines
+}
+
 function addToken(buckets: { y: number; tokens: PositionedToken[] }[], y: number, token: PositionedToken) {
   const bucket = buckets.find((b) => Math.abs(b.y - y) <= 2)
   if (bucket) {

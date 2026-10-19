@@ -86,13 +86,31 @@ export async function parsePdf(
   }
 
   const lines: Line[] = []
+  const unreadablePages: number[] = []
   for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
     const page = await doc.getPage(pageNum)
     const content = await page.getTextContent()
-    lines.push(...groupItemsIntoLines(content.items as never))
+    const pageLines = groupItemsIntoLines(content.items as never)
+    if (isUnreadableText(pageLines.map((l) => l.text).join(' '))) unreadablePages.push(pageNum)
+    lines.push(...pageLines)
   }
 
-  return runStateMachine(fileName, lines)
+  const outcome = runStateMachine(fileName, lines)
+  for (const pageNum of unreadablePages) {
+    outcome.warnings.push(
+      `Page ${pageNum} of ${fileName} has no readable text (often a "print to PDF" from a web portal) - copy its results from the original web page and use Paste text, or add them manually.`,
+    )
+  }
+  return outcome
+}
+
+// Pages printed from some web portals embed fonts with no character mapping, so pdf.js
+// returns symbols instead of letters. Real report text is mostly letters and digits.
+function isUnreadableText(text: string): boolean {
+  const visible = text.replace(/\s/g, '')
+  if (visible.length < 40) return false
+  const readable = visible.match(/[A-Za-z0-9]/g)?.length ?? 0
+  return readable / visible.length < 0.5
 }
 
 export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
@@ -101,6 +119,8 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
 
   let currentPanel = ''
   let currentCollectedDate: string | null = null
+  // Rows that looked like results but had no collection date to file them under.
+  let datelessRows = 0
   let wideTable: { dates: { iso: string; x: number }[] } | null = null
   let longTable: LongTableState | null = null
   let columnTable: ColumnTableState | null = null
@@ -403,6 +423,15 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
       const iso = ausDateToIso(collected[1])
       if (iso) currentCollectedDate = iso
     }
+    // Clinic-portal / HL7-style message headers ("Date of Observation: 09/10/2026 09:05").
+    // The observation date is the collection date; "Date Requested:", "Date Received:" etc.
+    // aren't, and none of these are a wide-table "Date:" header.
+    const labelledDate = text.match(/^Date (?:of )?(Observation|Collection|Requested|Received|Reported|of Message)\b[^:]*:\s*(\d{1,2}\/\d{1,2}\/\d{2,4})?/i)
+    if (labelledDate) {
+      const iso = labelledDate[2] ? ausDateToIso(labelledDate[2]) : null
+      if (iso && /observation|collection/i.test(labelledDate[1])) currentCollectedDate = iso
+      continue
+    }
 
     // --- Long-format table (e.g. GLUCOSE: one row per date) ---
     if (/Lab#/i.test(text) && /Collection Type/i.test(text)) {
@@ -476,7 +505,8 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
     // (e.g. "Magnesium 0.91 mmol/L 0.70 - 1.10", "hsCRP 7.7 mg/L see below") ---
     if (!longTable && (!wideTable || wideTable.dates.length === 1)) {
       const date = wideTable ? wideTable.dates[0].iso : currentCollectedDate
-      const row = date ? parseUnbracketedRow(text) : null
+      const row = parseUnbracketedRow(text)
+      if (row && !date) datelessRows++
       if (row && date) {
         const marker = lookupMarker(row.name)
         results.push(
@@ -535,6 +565,7 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
     // --- Single-value line fallback (e.g. ANDROGEN STUDIES: "Testosterone  15.7 nmol/L (6.0 - 28.0)") ---
     if (!wideTable && !longTable) {
       const single = parseSingleValueLine(text)
+      if (single && !currentCollectedDate) datelessRows++
       if (single && currentCollectedDate) {
         const marker = lookupMarker(single.name)
         results.push(
@@ -559,6 +590,12 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
   flushLongTable()
   flushColumnTable()
   flushHistoryTable()
+
+  if (datelessRows > 0) {
+    warnings.push(
+      `${datelessRows} result${datelessRows === 1 ? '' : 's'} skipped because no collection date was found - include the "Collected" or "Date of Observation" line in what you paste.`,
+    )
+  }
 
   return { results, warnings }
 }
@@ -672,9 +709,10 @@ function parseUnbracketedRow(text: string): {
   rangeText: string
 } | null {
   // name, value (optional op / glued flag), unit (must contain a letter or %), then
-  // either a bare "low - high" / "< n" range or the words "see below".
+  // either a bare "low - high" / "< n" range or the words "see below", optionally followed
+  // by short Flag / Status columns as clinic portals print them ("0.59-1.03  N  F").
   const m = text.match(
-    /^([A-Za-z][A-Za-z0-9 ./\-]*?)\s+([<>]?\s*-?\d+(?:\.\d+)?\*{0,2})\s+(\S*[A-Za-z%µμ]\S*)\s+(-?\d+(?:\.\d+)?\s*-\s*-?\d+(?:\.\d+)?|[<>]=?\s*-?\d+(?:\.\d+)?|see below)$/i,
+    /^([A-Za-z][A-Za-z0-9 ./\-]*?)\s+([<>]?\s*-?\d+(?:\.\d+)?\*{0,2})\s+(\S*[A-Za-z%µμ]\S*)\s+(-?\d+(?:\.\d+)?\s*-\s*-?\d+(?:\.\d+)?|[<>]=?\s*-?\d+(?:\.\d+)?|see below)(?:\s+[A-Z]{1,2}){0,2}$/i,
   )
   if (!m) return null
   const [, name, rawValue, unit, rangePart] = m

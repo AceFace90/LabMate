@@ -21,6 +21,7 @@ export function UploadFlow({ onImport }: Props) {
   const [stage, setStage] = useState<Stage>({ kind: 'idle' })
   const [password, setPassword] = useState('')
   const [pastedText, setPastedText] = useState('')
+  const [pastedDate, setPastedDate] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   async function tryParse(file: File, pw?: string) {
@@ -42,7 +43,7 @@ export function UploadFlow({ onImport }: Props) {
   }
 
   function parsePastedText() {
-    setStage({ kind: 'review', sourceName: 'Pasted text', outcome: runStateMachine('Pasted text', textToLines(pastedText)) })
+    setStage({ kind: 'review', sourceName: 'Pasted text', outcome: runStateMachine('Pasted text', textToLines(pastedText), pastedDate) })
   }
 
   return (
@@ -75,9 +76,13 @@ export function UploadFlow({ onImport }: Props) {
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Paste report text</h3>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            Copy the results from a PDF or your lab's web portal and paste them below. Include the collection date
-            line (e.g. "Collected" or "Date of Observation") so results are filed under the right date.
+            Copy the results from a PDF or your lab's web portal and paste them below. If the text doesn't include
+            the collection date, set it here.
           </p>
+          <label style={{ display: 'block', fontSize: 13, marginBottom: 8 }}>
+            Collection date{' '}
+            <input type="date" value={pastedDate} onChange={(e) => setPastedDate(e.target.value)} />
+          </label>
           <textarea
             autoFocus
             rows={12}
@@ -195,10 +200,16 @@ export function UploadFlow({ onImport }: Props) {
                 setStage({ kind: 'idle' })
                 setPassword('')
                 setPastedText('')
+                setPastedDate('')
               }}
             >
               Save recognised results
             </button>
+            {stage.sourceName === 'Pasted text' && (
+              <button className="secondary" onClick={() => setStage({ kind: 'paste' })}>
+                Edit text
+              </button>
+            )}
             <button className="secondary" onClick={() => setStage({ kind: 'idle' })}>
               Discard
             </button>

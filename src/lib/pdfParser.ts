@@ -113,14 +113,16 @@ function isUnreadableText(text: string): boolean {
   return readable / visible.length < 0.5
 }
 
-export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
+/** `defaultDate` (ISO) files results under that date until the text gives its own - used for pasted text. */
+export function runStateMachine(fileName: string, lines: Line[], defaultDate?: string): ParseOutcome {
   const results: MarkerResult[] = []
   const warnings: string[] = []
 
   let currentPanel = ''
-  let currentCollectedDate: string | null = null
+  let currentCollectedDate: string | null = defaultDate || null
   // Rows that looked like results but had no collection date to file them under.
   let datelessRows = 0
+  let awaitingObservationDate = false
   let wideTable: { dates: { iso: string; x: number }[] } | null = null
   let longTable: LongTableState | null = null
   let columnTable: ColumnTableState | null = null
@@ -253,6 +255,19 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
     const line = lines[i]
     const text = line.text.trim()
     if (!text) continue
+
+    // Header values pasted after their labels ("Date of Observation:" ... "09/10/2026 09:05"):
+    // take bare date lines as the observation date. Portals list the date-only "Date
+    // Requested" before it, so keep looking until one with a time turns up.
+    if (awaitingObservationDate) {
+      const bare = text.match(/^(\d{1,2}\/\d{1,2}\/\d{2,4})(\s+\d{1,2}:\d{2}(:\d{2})?)?$/)
+      const iso = bare ? ausDateToIso(bare[1]) : null
+      if (iso) {
+        currentCollectedDate = iso
+        if (bare![2]) awaitingObservationDate = false
+        continue
+      }
+    }
 
     if (/^Start of Document$/i.test(text)) {
       flushHistoryTable()
@@ -429,7 +444,10 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
     const labelledDate = text.match(/^Date (?:of )?(Observation|Collection|Requested|Received|Reported|of Message)\b[^:]*:\s*(\d{1,2}\/\d{1,2}\/\d{2,4})?/i)
     if (labelledDate) {
       const iso = labelledDate[2] ? ausDateToIso(labelledDate[2]) : null
-      if (iso && /observation|collection/i.test(labelledDate[1])) currentCollectedDate = iso
+      if (/observation|collection/i.test(labelledDate[1])) {
+        if (iso) currentCollectedDate = iso
+        else awaitingObservationDate = true
+      }
       continue
     }
 
@@ -593,7 +611,7 @@ export function runStateMachine(fileName: string, lines: Line[]): ParseOutcome {
 
   if (datelessRows > 0) {
     warnings.push(
-      `${datelessRows} result${datelessRows === 1 ? '' : 's'} skipped because no collection date was found - include the "Collected" or "Date of Observation" line in what you paste.`,
+      `${datelessRows} result${datelessRows === 1 ? '' : 's'} skipped because no collection date was found - set the collection date, or include the "Collected" or "Date of Observation" line in what you paste.`,
     )
   }
 

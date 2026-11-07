@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { GoogleAuthProvider, getAuth, signInWithPopup, signOut } from 'firebase/auth'
-import { initializeFirestore } from 'firebase/firestore'
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -16,7 +16,12 @@ const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 // Profile fields (name, takesCreatineSupplement, theme) are frequently absent and
 // get spread as `undefined` into merge writes - Firestore rejects those by default.
-export const db = initializeFirestore(app, { ignoreUndefinedProperties: true })
+// Persistent IndexedDB cache: listeners fire from cache immediately and then only
+// receive server deltas, instead of refetching everything on each load.
+export const db = initializeFirestore(app, {
+  ignoreUndefinedProperties: true,
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+})
 
 const googleProvider = new GoogleAuthProvider()
 

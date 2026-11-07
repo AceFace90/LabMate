@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Dashboard } from './components/Dashboard'
+import { Icon } from './components/Icon'
 import { MarkerDetail } from './components/MarkerDetail'
 import { MarkerGrid } from './components/MarkerGrid'
 import { Settings } from './components/Settings'
@@ -23,12 +24,17 @@ import { deriveComputedMarkers } from './lib/derivedMarkers'
 import { signInWithGoogle, signOutUser } from './lib/firebase'
 import {
   clearAllData,
+  clearCloudCache,
+  getLastUid,
+  hasLocalOnlyData,
   hasOnboarded,
+  loadCloudCache,
   loadCustomMarkers,
   loadProfile,
   loadResults,
   mergeResults,
   removeResult,
+  saveCloudCache,
   saveCustomMarkers,
   saveProfile,
   saveResults,
@@ -41,7 +47,11 @@ import { useAuthUser } from './lib/useAuthUser'
 type Tab = 'dashboard' | 'markers' | 'testplan' | 'upload' | 'settings'
 
 function slugify(name: string): string {
-  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
 }
 
 // Mirrors GymMate: no persistent app-name header - each non-Home tab gets its
@@ -49,7 +59,13 @@ function slugify(name: string): string {
 function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <h2 className="page-title">{title}</h2>
+      <h2 className="page-title">
+        <picture>
+          <source srcSet={`${import.meta.env.BASE_URL}logo-dark.svg`} media="(prefers-color-scheme: dark)" />
+          <img className="header-brand" src={`${import.meta.env.BASE_URL}logo-light.svg`} alt="" />
+        </picture>
+        {title}
+      </h2>
       <p className="page-subtitle">{subtitle}</p>
     </div>
   )
@@ -57,10 +73,20 @@ function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
 
 export default function App() {
   const { user, initializing } = useAuthUser()
-  const [results, setResults] = useState<MarkerResult[]>(() => loadResults())
-  const [profile, setProfile] = useState<Profile>(() => loadProfile())
-  const [customMarkers, setCustomMarkers] = useState<CustomMarker[]>(() => loadCustomMarkers())
-  const [tab, setTab] = useState<Tab>('dashboard')
+  // If a user was signed in last time, paint their cached cloud data immediately
+  // (before auth restores); otherwise fall back to the local-only storage.
+  const [initialCache] = useState(() => loadCloudCache())
+  const [results, setResults] = useState<MarkerResult[]>(() => initialCache?.results ?? loadResults())
+  const [profile, setProfile] = useState<Profile>(() => initialCache?.profile ?? loadProfile())
+  const [customMarkers, setCustomMarkers] = useState<CustomMarker[]>(
+    () => initialCache?.customMarkers ?? loadCustomMarkers(),
+  )
+  const cacheRef = useRef({ results, profile, customMarkers })
+  const cacheTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // Dev-only deep link (?tab=testplan) so screenshots can open a tab directly.
+  const [tab, setTab] = useState<Tab>(
+    () => ((import.meta.env.DEV && new URLSearchParams(location.search).get('tab')) as Tab) || 'dashboard',
+  )
   const [selectedMarker, setSelectedMarker] = useState<string | null>(null)
   const [scrollToCategory, setScrollToCategory] = useState<string | null>(null)
 
@@ -79,7 +105,7 @@ export default function App() {
   const [cloudReady, setCloudReady] = useState(false)
   const [migrating, setMigrating] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
-  const [dismissedSplash, setDismissedSplash] = useState(() => hasOnboarded())
+  const [dismissedSplash, setDismissedSplash] = useState(() => hasOnboarded() || (import.meta.env.DEV && new URLSearchParams(location.search).has('tab')))
   // Transient override so "Log out" can always return to the splash screen, even
   // for a returning local user with data (who wouldn't otherwise see it again).
   const [forceSplash, setForceSplash] = useState(false)
@@ -93,21 +119,37 @@ export default function App() {
     setAuthError('Could not save your change. Please try again.')
   }
 
-  // Cloud sync is opt-in per browser: signing in merges this browser's local data
-  // into the account (once), after which Firestore is the source of truth and the
-  // local copy is cleared. Signing out drops back to whatever's now in local storage
-  // (empty, post-migration) rather than leaving cloud data cached for the next person
-  // on a shared device.
+  // Cloud sync is opt-in per browser. Signed in, Firestore (with its persistent
+  // IndexedDB cache) is the source of truth and listeners attach right away; a
+  // per-user snapshot in localStorage lets the first paint show data before auth
+  // even restores. Local-only data from signed-out use is merged into the account
+  // once (only if any exists) and then cleared. Signing out clears the snapshot so
+  // a shared device doesn't keep showing the previous user's data.
   useEffect(() => {
+    if (initializing) return // keep the cached first paint until auth settles
     if (!user) {
+      clearCloudCache()
       setCloudReady(false)
       setResults(loadResults())
       setProfile(loadProfile())
       setCustomMarkers(loadCustomMarkers())
       return
     }
-    let cancelled = false
+    const lastUid = getLastUid()
+    if (lastUid && lastUid !== user.uid) {
+      // Different account than the one cached: don't show their data.
+      clearCloudCache()
+      setResults([])
+      setProfile({ birthDate: null, sex: null })
+      setCustomMarkers([])
+    }
     setCloudReady(false)
+    if (!hasLocalOnlyData()) {
+      setCloudReady(true)
+      return
+    }
+    // Migration runs while cached data stays visible.
+    let cancelled = false
     setMigrating(true)
     migrateLocalDataToCloud(user)
       .then(() => {
@@ -123,14 +165,33 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [user, initializing])
 
   useEffect(() => {
     if (!user || !cloudReady) return
-    const unsubResults = subscribeResults(user.uid, setResults)
-    const unsubProfile = subscribeProfile(user.uid, setProfile)
-    const unsubCustomMarkers = subscribeCustomMarkers(user.uid, setCustomMarkers)
+    const uid = user.uid
+    // Mirror listener data into the localStorage snapshot (debounced).
+    const persist = () => {
+      clearTimeout(cacheTimer.current)
+      cacheTimer.current = setTimeout(() => saveCloudCache(uid, cacheRef.current), 300)
+    }
+    const unsubResults = subscribeResults(uid, (r) => {
+      cacheRef.current.results = r
+      setResults(r)
+      persist()
+    })
+    const unsubProfile = subscribeProfile(uid, (p) => {
+      cacheRef.current.profile = p
+      setProfile(p)
+      persist()
+    })
+    const unsubCustomMarkers = subscribeCustomMarkers(uid, (m) => {
+      cacheRef.current.customMarkers = m
+      setCustomMarkers(m)
+      persist()
+    })
     return () => {
+      clearTimeout(cacheTimer.current)
       unsubResults()
       unsubProfile()
       unsubCustomMarkers()
@@ -161,7 +222,11 @@ export default function App() {
   }
 
   function handleAddManualResult(input: Omit<MarkerResult, 'id' | 'createdAt'>) {
-    const withMeta: MarkerResult = { ...input, id: crypto.randomUUID(), createdAt: new Date().toISOString() }
+    const withMeta: MarkerResult = {
+      ...input,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+    }
     const merged = mergeResults(results, [withMeta])
     if (user) {
       if (merged.length !== results.length + 1) return // exact duplicate, same as local path
@@ -198,7 +263,12 @@ export default function App() {
   function handleAddCustomMarker(input: { label: string; unit: string }) {
     const key = `custom_${slugify(input.label)}`
     if (customMarkers.some((m) => m.key === key)) return
-    const marker: CustomMarker = { key, label: input.label, unit: input.unit, createdAt: new Date().toISOString() }
+    const marker: CustomMarker = {
+      key,
+      label: input.label,
+      unit: input.unit,
+      createdAt: new Date().toISOString(),
+    }
     if (user) {
       saveCustomMarkerCloud(user.uid, marker).catch(reportCloudError)
     } else {
@@ -281,7 +351,7 @@ export default function App() {
     setForceSplash(false)
   }
 
-  if (initializing) {
+  if (initializing && !initialCache) {
     return <div style={{ padding: 20 }}>Loading...</div>
   }
 
@@ -302,75 +372,77 @@ export default function App() {
 
   return (
     <>
-      {tab === 'dashboard' && (
-        <Dashboard
-          results={displayResults}
-          profile={profile}
-          nameFallback={user?.displayName ?? null}
-          onGoToUpload={() => setTab('upload')}
-          onGoToSettings={() => setTab('settings')}
-          onGoToMarkers={goToMarkers}
-        />
-      )}
-
-      {tab === 'markers' &&
-        (selectedMarker ? (
-          <MarkerDetail
-            markerKey={selectedMarker}
+      <main className="page">
+        {tab === 'dashboard' && (
+          <Dashboard
             results={displayResults}
-            customMarkers={customMarkers}
-            onBack={() => setSelectedMarker(null)}
-            onAddManualResult={handleAddManualResult}
-            onDeleteResult={handleDeleteResult}
-            onEditResult={handleEditResult}
+            profile={profile}
+            nameFallback={user?.displayName ?? null}
+            onGoToUpload={() => setTab('upload')}
+            onGoToSettings={() => setTab('settings')}
+            onGoToMarkers={goToMarkers}
           />
-        ) : (
-          <>
-            <PageHeader title="Markers" subtitle="Every marker you've imported or logged manually." />
-            <MarkerGrid
+        )}
+
+        {tab === 'markers' &&
+          (selectedMarker ? (
+            <MarkerDetail
+              markerKey={selectedMarker}
               results={displayResults}
               customMarkers={customMarkers}
+              onBack={() => setSelectedMarker(null)}
+              onAddManualResult={handleAddManualResult}
+              onDeleteResult={handleDeleteResult}
+              onEditResult={handleEditResult}
+            />
+          ) : (
+            <>
+              <PageHeader title="Markers" subtitle="Every marker you've imported or logged manually." />
+              <MarkerGrid
+                results={displayResults}
+                customMarkers={customMarkers}
+                profile={profile}
+                onSelectMarker={setSelectedMarker}
+                onAddCustomMarker={handleAddCustomMarker}
+              />
+            </>
+          ))}
+
+        {tab === 'testplan' && (
+          <>
+            <PageHeader title="Test Plan" subtitle="What's due next, based on your results and their usual cadence." />
+            <TestPlan results={displayResults} profile={profile} />
+          </>
+        )}
+
+        {tab === 'upload' && (
+          <>
+            <PageHeader title="Import PDF" subtitle="Add a new pathology report - import the PDF or paste its text." />
+            <UploadFlow onImport={handleImport} />
+          </>
+        )}
+
+        {tab === 'settings' && (
+          <>
+            <PageHeader title="Settings" subtitle="Your profile, appearance and account." />
+            <Settings
               profile={profile}
-              onSelectMarker={setSelectedMarker}
-              onAddCustomMarker={handleAddCustomMarker}
+              onSaveProfile={handleSaveProfile}
+              onDeleteAllData={handleDeleteAllData}
+              user={user}
+              migrating={migrating}
+              authError={authError}
+              onSignIn={handleSignIn}
+              onLogOut={handleLogOut}
+              onDeleteAccount={handleDeleteAccount}
             />
           </>
-        ))}
-
-      {tab === 'testplan' && (
-        <>
-          <PageHeader title="Test Plan" subtitle="What's due next, based on your results and their usual cadence." />
-          <TestPlan results={displayResults} profile={profile} />
-        </>
-      )}
-
-      {tab === 'upload' && (
-        <>
-          <PageHeader title="Import PDF" subtitle="Add a new pathology report - import the PDF or paste its text." />
-          <UploadFlow onImport={handleImport} />
-        </>
-      )}
-
-      {tab === 'settings' && (
-        <>
-          <PageHeader title="Settings" subtitle="Your profile, appearance and account." />
-          <Settings
-            profile={profile}
-            onSaveProfile={handleSaveProfile}
-            onDeleteAllData={handleDeleteAllData}
-            user={user}
-            migrating={migrating}
-            authError={authError}
-            onSignIn={handleSignIn}
-            onLogOut={handleLogOut}
-            onDeleteAccount={handleDeleteAccount}
-          />
-        </>
-      )}
+        )}
+      </main>
 
       <nav className="tabs">
         <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>
-          <span className="tab-icon">🏠</span>
+          <Icon name="heart" className="tab-icon" />
           <span className="tab-label">Dashboard</span>
         </button>
         <button
@@ -380,19 +452,19 @@ export default function App() {
             setTab('markers')
           }}
         >
-          <span className="tab-icon">📊</span>
+          <Icon name="drop" className="tab-icon" />
           <span className="tab-label">Markers</span>
         </button>
         <button className={tab === 'testplan' ? 'active' : ''} onClick={() => setTab('testplan')}>
-          <span className="tab-icon">📋</span>
+          <Icon name="calendar" className="tab-icon" />
           <span className="tab-label">Test Plan</span>
         </button>
         <button className={tab === 'upload' ? 'active' : ''} onClick={() => setTab('upload')}>
-          <span className="tab-icon">📄</span>
-          <span className="tab-label">Import PDF</span>
+          <Icon name="doc" className="tab-icon" />
+          <span className="tab-label">Import</span>
         </button>
         <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
-          <span className="tab-icon">⚙️</span>
+          <Icon name="gear" className="tab-icon" />
           <span className="tab-label">Settings</span>
         </button>
       </nav>

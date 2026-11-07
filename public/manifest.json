@@ -4,8 +4,8 @@
   "description": "Blood test tracking, over time",
   "start_url": "/LabMate/",
   "display": "standalone",
-  "theme_color": "#16a34a",
-  "background_color": "#1a1a1a",
+  "theme_color": "#f2f2f7",
+  "background_color": "#f2f2f7",
   "icons": [
     {
       "src": "/LabMate/icon-192.png",

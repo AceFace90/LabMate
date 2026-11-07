@@ -48,7 +48,7 @@ export function TestPlan({ results, profile }: Props) {
         </p>
       </div>
 
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', marginTop: 12 }}>
+      <div className="split-2">
         <div className="card">
           <h3 style={{ marginTop: 0 }}>From your GP</h3>
           <div className="test-plan-list">

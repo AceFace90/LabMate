@@ -1,3 +1,4 @@
+import { Icon } from './Icon'
 import { useRef, useState } from 'react'
 import { getMarker } from '../data/markerCatalog'
 import { formatIsoDate } from '../lib/dates'
@@ -187,7 +188,7 @@ export function UploadFlow({ onImport }: Props) {
           {stage.outcome.warnings.length > 0 && (
             <div className="warning-list">
               {stage.outcome.warnings.map((w, i) => (
-                <div key={i}>⚠ {w}</div>
+                <div key={i}><Icon name="warning" className="warn-icon" /> {w}</div>
               ))}
             </div>
           )}

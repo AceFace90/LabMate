@@ -1,43 +1,52 @@
-/* Shared design system with GymMate/MacroMate (sister apps) - neon green accent,
-   black/white surfaces. Keep these tokens in sync with MacroMate's src/theme/index.js. */
+/* LabMate follows the Apple Health look (mirrors the native iOS app's HealthTheme.swift):
+   grouped grey canvas, white continuous-corner cards, Apple system colours, and a
+   Health-pink accent. Variable names are kept stable; values are Apple system tokens. */
 :root {
   color-scheme: light;
-  --surface-1: #f9fafb;
-  --page-plane: #ffffff;
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-muted: #9ca3af;
-  --gridline: #e5e7eb;
-  --baseline: #d1d5db;
-  --border: rgba(17, 24, 39, 0.08);
-  --series-1: #16a34a;
-  --status-good: #16a34a;
-  --status-warning: #eab308;
-  --status-serious: #f97316;
-  --status-critical: #ef4444;
-  --accent-bg: rgba(22, 163, 74, 0.1);
-  --accent-border: rgba(22, 163, 74, 0.3);
-  /* Text color placed on top of a solid --series-1 fill (buttons, active segments).
-     GymMate inverts this per theme rather than always using white. */
+  --surface-1: #ffffff; /* card */
+  --surface-2: #ffffff; /* elevated card */
+  --page-plane: #f2f2f7; /* grouped canvas */
+  --text-primary: #000000;
+  --text-secondary: rgba(60, 60, 67, 0.6);
+  --text-muted: rgba(60, 60, 67, 0.3);
+  --gridline: rgba(60, 60, 67, 0.29); /* separator */
+  --baseline: rgba(120, 120, 128, 0.2); /* fill */
+  --fill: rgba(120, 120, 128, 0.2);
+  --border: rgba(60, 60, 67, 0.12);
+  --series-1: #ff2d55;
+  --accent: #ff2d55;
+  --status-good: #34c759;
+  --status-warning: #ffcc00;
+  --status-serious: #ff9500;
+  --status-critical: #ff3b30;
+  --accent-bg: rgba(255, 45, 85, 0.1);
+  --accent-border: rgba(255, 45, 85, 0.3);
   --accent-contrast: #ffffff;
+  --glass: rgba(249, 249, 249, 0.72);
+  --card-radius: 26px;
+  --chip-radius: 18px;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme='light'])) {
     color-scheme: dark;
-    --surface-1: #2a2a2a;
-    --page-plane: #1a1a1a;
+    --surface-1: #1c1c1e;
+    --surface-2: #2c2c2e;
+    --page-plane: #000000;
     --text-primary: #ffffff;
-    --text-secondary: #9ca3af;
-    --text-muted: #6b7280;
-    --gridline: #3a3a3a;
-    --baseline: #4b5563;
-    --border: rgba(255, 255, 255, 0.1);
-    --series-1: #39ff14;
-    --status-good: #39ff14;
-    --accent-bg: rgba(57, 255, 20, 0.1);
-    --accent-border: rgba(57, 255, 20, 0.3);
-    --accent-contrast: #000000;
+    --text-secondary: rgba(235, 235, 245, 0.6);
+    --text-muted: rgba(235, 235, 245, 0.3);
+    --gridline: rgba(84, 84, 88, 0.6);
+    --baseline: rgba(120, 120, 128, 0.36);
+    --fill: rgba(120, 120, 128, 0.36);
+    --border: rgba(84, 84, 88, 0.45);
+    --series-1: #ff375f;
+    --accent: #ff375f;
+    --status-good: #30d158;
+    --accent-bg: rgba(255, 55, 95, 0.14);
+    --accent-border: rgba(255, 55, 95, 0.35);
+    --glass: rgba(28, 28, 30, 0.72);
   }
 }
 
@@ -45,19 +54,22 @@
    media query above, which only drives the 'auto' behaviour). */
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --surface-1: #2a2a2a;
-  --page-plane: #1a1a1a;
+  --surface-1: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --page-plane: #000000;
   --text-primary: #ffffff;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  --gridline: #3a3a3a;
-  --baseline: #4b5563;
-  --border: rgba(255, 255, 255, 0.1);
-  --series-1: #39ff14;
-  --status-good: #39ff14;
-  --accent-bg: rgba(57, 255, 20, 0.1);
-  --accent-border: rgba(57, 255, 20, 0.3);
-  --accent-contrast: #000000;
+  --text-secondary: rgba(235, 235, 245, 0.6);
+  --text-muted: rgba(235, 235, 245, 0.3);
+  --gridline: rgba(84, 84, 88, 0.6);
+  --baseline: rgba(120, 120, 128, 0.36);
+  --fill: rgba(120, 120, 128, 0.36);
+  --border: rgba(84, 84, 88, 0.45);
+  --series-1: #ff375f;
+  --accent: #ff375f;
+  --status-good: #30d158;
+  --accent-bg: rgba(255, 55, 95, 0.14);
+  --accent-border: rgba(255, 55, 95, 0.35);
+  --glass: rgba(28, 28, 30, 0.72);
 }
 
 * {
@@ -66,7 +78,8 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
   background: var(--page-plane);
   color: var(--text-primary);
 }
@@ -661,8 +674,8 @@ button.btn-wipe {
   justify-content: center;
   gap: 6px;
   width: 100%;
-  background: #450a0a;
-  border: 1px solid #991b1b;
+  background: color-mix(in srgb, var(--status-critical) 14%, transparent);
+  border: none;
   border-radius: 14px;
   padding: 16px 24px;
   font-size: 13px;
@@ -837,4 +850,277 @@ table.results-table th {
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
   color: var(--series-1);
+}
+
+/* ---- Apple Health restyle overrides ---- */
+.page-title,
+h1 {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+.page-subtitle,
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 20px;
+  line-height: 1.3;
+  margin: 0 0 20px;
+}
+h3 { font-size: 20px; font-weight: 600; }
+
+.card {
+  background: var(--surface-1);
+  border: none;
+  border-radius: var(--card-radius);
+  corner-shape: round;
+  padding: 18px;
+}
+.card .card { background: var(--surface-2); }
+.card + .card { margin-top: 16px; }
+
+.stat-tile .label,
+.ring-legend-row .label {
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.stat-tile .value,
+.ring-legend-row .value { font-weight: 700; }
+.category-section h3 { font-size: 20px; font-weight: 600; }
+.category-section .cat-desc { font-size: 14px; }
+
+.marker-grid { gap: 10px; }
+.marker-card {
+  border: none;
+  border-radius: var(--chip-radius);
+  background: var(--page-plane);
+  padding: 12px 14px;
+}
+.marker-card:hover { box-shadow: 0 0 0 2px var(--accent-border); }
+.marker-card.gap { border: 1px dashed var(--gridline); background: transparent; }
+
+.contributor-row,
+.finding-block,
+.test-plan-row { border-top: 0.5px solid var(--gridline); }
+.contributor-row:first-child,
+.finding-block:first-child,
+.test-plan-row:first-child { border-top: none; }
+
+.range-bar-track { background: var(--fill); height: 8px; border-radius: 4px; }
+.range-bar-band { height: 8px; border-radius: 4px; }
+
+/* Buttons */
+button.primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-radius: 12px;
+  padding: 14px 24px;
+}
+button.primary:active { opacity: 0.8; }
+button.secondary {
+  background: var(--fill);
+  border: none;
+  color: var(--accent);
+  border-radius: 12px;
+  padding: 14px 24px;
+}
+button.google {
+  background: var(--surface-1);
+  border: none;
+  border-radius: 12px;
+}
+button.btn-logout {
+  border: none;
+  background: var(--surface-1);
+  border-radius: var(--chip-radius);
+}
+button.btn-wipe { border-radius: var(--chip-radius); }
+
+/* Segmented controls (Apple style) */
+.segmented {
+  border: none;
+  background: var(--fill);
+  border-radius: 9px;
+  padding: 2px;
+  gap: 2px;
+}
+.segmented button { border-radius: 7px; color: var(--text-primary); }
+.segmented button:not(:last-child) { border-right: none; }
+.segmented button.active {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.theme-picker button { border: none; background: var(--fill); border-radius: 12px; }
+.theme-picker button.active {
+  background: var(--accent-bg);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  color: var(--accent);
+}
+
+.upload-drop { border-radius: var(--card-radius); border-color: var(--gridline); }
+.modal { border: none; border-radius: var(--card-radius); background: var(--surface-2); }
+.modal input,
+.form-row input,
+.form-row select {
+  border: none;
+  background: var(--fill);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: inherit;
+}
+.badge { border: none; }
+table.results-table th, table.results-table td { border-bottom: 0.5px solid var(--gridline); }
+
+/* Brand mark */
+.brand-mark { display: block; margin: 0 auto 12px; width: 72px; height: 72px; border-radius: 16px; }
+.header-brand { display: inline-block; width: 28px; height: 28px; border-radius: 7px; vertical-align: -6px; margin-right: 8px; }
+
+/* Floating translucent tab bar */
+nav.tabs {
+  left: 12px;
+  right: 12px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  padding: 6px 4px;
+  background: var(--glass);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
+  border: 0.5px solid var(--border);
+  border-radius: 32px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+  max-width: 640px;
+  margin: 0 auto;
+}
+nav.tabs button { padding: 4px 0; border-radius: 24px; }
+nav.tabs button.active { color: var(--accent); background: var(--accent-bg); }
+nav.tabs .tab-label { font-size: 10px; }
+
+/* Theme override: pick the logo variant for an explicit data-theme that differs from the OS. */
+.header-brand, .brand-mark { background: var(--surface-1); }
+
+/* SF Symbols-style SVG icons (components/Icon.tsx). */
+.icon { display: inline-block; flex-shrink: 0; vertical-align: -0.125em; }
+nav.tabs button { color: var(--text-secondary); }
+nav.tabs .tab-icon { font-size: 24px; opacity: 1; }
+nav.tabs .tab-label { font-weight: 500; }
+nav.tabs button.active { color: var(--accent); }
+.theme-picker .theme-icon { font-size: 20px; }
+.theme-picker button.active .theme-icon { color: var(--accent); }
+.feature-icon {
+  width: 32px; height: 32px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9px; background: var(--accent); color: #fff; font-size: 18px;
+}
+.warn-icon { color: var(--status-serious); }
+
+/* ---------- iOS inset-grouped list primitives (mirror SwiftUI Form/List) ---------- */
+.ios-section { margin: 0 0 28px; }
+.ios-section-header {
+  font-size: 13px; text-transform: uppercase; letter-spacing: 0.02em;
+  color: var(--text-secondary); margin: 0 16px 6px; font-weight: 400;
+}
+.ios-section-footer {
+  font-size: 13px; line-height: 1.38; color: var(--text-secondary); margin: 7px 16px 0;
+}
+.ios-group {
+  background: var(--surface-1); border-radius: var(--card-radius, 26px); overflow: hidden;
+}
+.ios-row {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  min-height: 52px; padding: 10px 20px; font-size: 17px; color: var(--text-primary);
+  width: 100%; background: none; border: none; text-align: left; font-family: inherit;
+}
+.ios-row + .ios-row::before {
+  content: ''; position: absolute; top: 0; left: 20px; right: 0;
+  height: 0.5px; background: var(--gridline);
+}
+.ios-row.has-icon + .ios-row::before, .ios-row.has-icon + .ios-row.has-icon::before { left: 60px; }
+.ios-row .ios-row-label { flex: 1; min-width: 0; }
+.ios-row .ios-row-sub { display: block; font-size: 15px; color: var(--text-secondary); }
+.ios-row .ios-row-value { color: var(--text-secondary); }
+button.ios-row { cursor: pointer; }
+button.ios-row:active:not(:disabled) { background: var(--fill); }
+button.ios-row:disabled { opacity: 0.4; cursor: default; }
+.ios-row.tint { color: var(--accent); }
+.ios-row.destructive { color: var(--status-critical); }
+.ios-row .row-icon { font-size: 22px; width: 28px; display: flex; justify-content: center; }
+.ios-row input[type='text'], .ios-row input[type='date'], .ios-row select {
+  flex: 1; border: none; background: none; padding: 0; margin: 0; font: inherit; font-size: 17px;
+  color: var(--text-primary); outline: none; min-width: 0; border-radius: 0; box-shadow: none;
+}
+.ios-row input[type='date'], .ios-row select { text-align: right; color: var(--text-secondary); flex: 0 1 auto; }
+.ios-row select { appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 2px; }
+.ios-row .chevrons { color: var(--text-secondary); font-size: 14px; margin-left: -6px; pointer-events: none; }
+
+/* iOS switch */
+.ios-switch { position: relative; width: 51px; height: 31px; flex-shrink: 0; }
+.ios-switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+.ios-switch span {
+  position: absolute; inset: 0; border-radius: 31px; background: var(--fill);
+  transition: background 0.2s;
+}
+.ios-switch span::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+  background: #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.16);
+  transition: transform 0.2s;
+}
+.ios-switch input:checked + span { background: var(--status-good); }
+.ios-switch input:checked + span::after { transform: translateX(20px); }
+.ios-switch input:disabled + span { opacity: 0.5; }
+
+/* Large title, iOS style */
+.page-title { font-size: 34px; font-weight: 700; letter-spacing: 0.01em; margin: 8px 0 4px; }
+.page-subtitle { font-size: 15px; color: var(--text-secondary); margin: 0 0 18px; }
+.caveat { color: var(--text-secondary); font-size: 13px; }
+
+/* Profile header card */
+.ios-profile { display: flex; align-items: center; gap: 14px; padding: 14px 20px; }
+.ios-profile img { width: 56px; height: 56px; border-radius: 13px; }
+.ios-profile .name { font-size: 22px; font-weight: 700; }
+.ios-profile .email { font-size: 15px; color: var(--text-secondary); }
+
+/* ---------- Adaptive layout: iPhone / iPad / desktop (mirrors size classes) ---------- */
+#root { max-width: none; padding-left: 16px; padding-right: 16px; }
+.page { margin: 0 auto; max-width: 1180px; }
+.form-column { max-width: 760px; }
+.split-2 { display: grid; gap: 16px; grid-template-columns: 1fr; margin-top: 16px; align-items: start; }
+.split-2 > .card { margin-top: 0; }
+nav.tabs button:focus { outline: none; }
+nav.tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* iPad: regular width */
+@media (min-width: 700px) {
+  #root { padding-left: 32px; padding-right: 32px; }
+  .split-2 { grid-template-columns: 1fr 1fr; }
+  .marker-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+}
+
+/* Desktop / iPad landscape: sidebar replaces the floating tab bar */
+@media (min-width: 1100px) {
+  #root { padding: calc(28px + env(safe-area-inset-top)) 40px 40px calc(260px + 40px); }
+  nav.tabs {
+    top: 12px; bottom: 12px; left: 12px; right: auto; width: 248px; max-width: none; margin: 0;
+    flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 2px;
+    padding: 64px 10px 10px; border-radius: 26px;
+  }
+  nav.tabs::before {
+    content: 'LabMate'; position: absolute; top: 20px; left: 22px;
+    font-size: 22px; font-weight: 700; color: var(--text-primary);
+  }
+  nav.tabs button {
+    flex: 0 0 auto; flex-direction: row; justify-content: flex-start; gap: 12px;
+    padding: 10px 12px; border-radius: 12px; color: var(--text-primary);
+  }
+  nav.tabs button:hover:not(.active) { background: var(--fill); }
+  nav.tabs .tab-icon { font-size: 20px; color: var(--accent); }
+  nav.tabs .tab-label { font-size: 15px; font-weight: 500; }
+  nav.tabs button.active { background: var(--accent); color: #fff; }
+  nav.tabs button.active .tab-icon { color: #fff; }
+  .split-2 { gap: 20px; }
+  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
 }

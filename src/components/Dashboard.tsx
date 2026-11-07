@@ -38,7 +38,7 @@ export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoTo
   const greeting = (
     <div style={{ marginBottom: 16 }}>
       <div className="caveat" style={{ fontSize: 14 }}>{timeOfDayGreeting()},</div>
-      <div style={{ fontSize: 26, fontWeight: 800 }}>{firstName} 👋</div>
+      <div style={{ fontSize: 26, fontWeight: 800 }}>{firstName}</div>
     </div>
   )
 

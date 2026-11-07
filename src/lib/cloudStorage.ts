@@ -79,7 +79,8 @@ export async function saveProfileCloud(uid: string, profile: Profile): Promise<v
   await setDoc(userDoc(uid), { ...profile, updatedAt: serverTimestamp() }, { merge: true })
 }
 
-/** Runs once right after sign-in. Merges any data from this browser's local-only
+/** Runs after sign-in only when this browser has local-only data (see
+ * hasLocalOnlyData). Merges any data from this browser's local-only
  * storage into the cloud account (deduping against whatever's already there via
  * the same fingerprint used for local imports), then clears the local copy so it
  * can't be re-migrated or drift out of sync on a later sign-in. */
@@ -114,7 +115,9 @@ export async function migrateLocalDataToCloud(user: User): Promise<void> {
     },
     { merge: true },
   )
-  for (const result of mergedResults) {
+  // mergedResults = existing cloud results followed by genuinely new local ones;
+  // only write the new tail rather than rewriting everything.
+  for (const result of mergedResults.slice(existingResults.length)) {
     batch.set(doc(resultsCol(uid), result.id), result)
   }
   for (const marker of newCustomMarkers) {

@@ -117,3 +117,67 @@ export function exportAllData(): string {
     2,
   )
 }
+
+// --- Per-user cloud snapshot cache -------------------------------------------
+// Mirror of the last Firestore data seen for the signed-in user, so the app can
+// paint instantly on load (before auth restores / listeners fire). Cleared on
+// sign-out. Distinct from the local-only keys above, which hold signed-out data.
+const CLOUD_CACHE_PREFIX = 'labmate:cloudCache:v1:'
+const LAST_UID_KEY = 'labmate:lastUid:v1'
+
+export interface CloudSnapshotCache {
+  results: MarkerResult[]
+  profile: Profile
+  customMarkers: CustomMarker[]
+}
+
+export function getLastUid(): string | null {
+  try {
+    return localStorage.getItem(LAST_UID_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function loadCloudCache(): CloudSnapshotCache | null {
+  try {
+    const uid = getLastUid()
+    if (!uid) return null
+    const raw = localStorage.getItem(CLOUD_CACHE_PREFIX + uid)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<CloudSnapshotCache>
+    return {
+      results: parsed.results ?? [],
+      profile: parsed.profile ?? { birthDate: null, sex: null },
+      customMarkers: parsed.customMarkers ?? [],
+    }
+  } catch {
+    return null
+  }
+}
+
+export function saveCloudCache(uid: string, cache: CloudSnapshotCache): void {
+  try {
+    localStorage.setItem(CLOUD_CACHE_PREFIX + uid, JSON.stringify(cache))
+    localStorage.setItem(LAST_UID_KEY, uid)
+  } catch {
+    // Quota or private-mode failure: the cache is only an optimisation.
+  }
+}
+
+export function clearCloudCache(): void {
+  try {
+    const uid = getLastUid()
+    if (uid) localStorage.removeItem(CLOUD_CACHE_PREFIX + uid)
+    localStorage.removeItem(LAST_UID_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+/** True if signed-out/local-only storage holds anything worth migrating. */
+export function hasLocalOnlyData(): boolean {
+  const p = loadProfile()
+  const profileHasData = !!(p.name || p.birthDate || p.sex || p.takesCreatineSupplement || p.theme)
+  return loadResults().length > 0 || loadCustomMarkers().length > 0 || profileHasData
+}

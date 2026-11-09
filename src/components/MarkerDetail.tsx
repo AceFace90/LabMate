@@ -3,6 +3,9 @@ import { findCustomMarker, getMarker } from '../data/markerCatalog'
 import { formatIsoDate } from '../lib/dates'
 import { effectiveRange, markerStatus } from '../lib/healthScore'
 import type { CustomMarker, MarkerResult } from '../types'
+import { CATEGORY_STYLE, categoryColor } from '../data/categoryStyle'
+import { formatNumber, makeMarkerStory, rangeCaption } from '../lib/markerStory'
+import { Icon } from './Icon'
 import { RangeBar } from './RangeBar'
 import { TrendChart } from './TrendChart'
 
@@ -73,18 +76,69 @@ export function MarkerDetail({
   }
 
   const label = marker?.label ?? custom?.label ?? ''
+  const tint = categoryColor(marker?.category)
+  const asc = markerResults.filter((r) => r.value !== null).slice().reverse()
+  const numeric = asc.map((r) => r.value as number)
+  const latestPt = asc[asc.length - 1]
+  const latestRange = latestPt ? effectiveRange(latestPt, marker) : null
+  const caption = latestRange ? rangeCaption(latestRange.low, latestRange.high) : null
+  const story = makeMarkerStory({ label, unit, points: asc, marker })
+  const metricRows: [string, number][] =
+    numeric.length === 0
+      ? []
+      : [
+          ['Latest', numeric[numeric.length - 1]],
+          ...(numeric.length > 1 ? ([['Previous', numeric[numeric.length - 2]]] as [string, number][]) : []),
+          ['Highest', Math.max(...numeric)],
+          ['Lowest', Math.min(...numeric)],
+          ['Average', numeric.reduce((a, b) => a + b, 0) / numeric.length],
+        ]
   const description = marker?.description ?? ''
 
   return (
     <div>
       <button className="back-link" onClick={onBack}>
-        ← Back
+        <Icon name="chevronLeft" size={14} /> Markers
       </button>
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>{label}</h3>
-        {description && <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: -4 }}>{description}</p>}
-        <TrendChart results={markerResults} unit={unit} marker={marker} />
+      <div className="detail-head">
+        {marker && <Icon name={CATEGORY_STYLE[marker.category].icon} className="cat-icon" style={{ color: tint }} />}
+        <span>{label}</span>
       </div>
+      <h2 className="story-headline">{story.headline}</h2>
+      <p className="story-narrative">{story.narrative}</p>
+
+      <div className="card detail-card">
+        <TrendChart results={markerResults} unit={unit} marker={marker} color={tint} />
+        {caption && (
+          <div className="range-caption">
+            <span>
+              Reference range: {caption} {unit}
+            </span>
+            {latestRange?.isStandard && <span className="badge">General range</span>}
+          </div>
+        )}
+        {description && <p className="detail-desc">{description}</p>}
+      </div>
+
+      {numeric.length > 0 && (
+        <div className="list-card metric-rows">
+          {metricRows.map(([k, v]) => (
+            <div className="list-row static" key={k}>
+              <div className="list-main">{k}</div>
+              <div className="list-value">
+                <span className="v" style={{ color: tint }}>{formatNumber(v)}</span>
+                <span className="u">{unit}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {markerKey === 'creatinine' && (
+        <p className="story-narrative" style={{ fontSize: 12 }}>
+          Creatinine is also raised by creatine supplements and muscle mass, independent of kidney function.
+        </p>
+      )}
+      <h3 className="history-title">History</h3>
 
       <div className="card">
         <table className="results-table">

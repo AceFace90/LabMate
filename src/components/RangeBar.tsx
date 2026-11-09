@@ -6,6 +6,7 @@ interface Props {
   high: number | null
   status: MarkerStatus
   isStandard: boolean
+  compact?: boolean
 }
 
 /**
@@ -14,7 +15,7 @@ interface Props {
  * is padded around the range purely so the marker has room to sit visually. It does
  * not imply values further from center are proportionally more dangerous.
  */
-export function RangeBar({ value, low, high, status, isStandard }: Props) {
+export function RangeBar({ value, low, high, status, isStandard, compact }: Props) {
   if (low === null && high === null) return null
 
   let domainMin: number
@@ -45,7 +46,7 @@ export function RangeBar({ value, low, high, status, isStandard }: Props) {
     status === 'in_range' ? 'var(--status-good)' : status === 'unknown' ? 'var(--baseline)' : 'var(--status-serious)'
 
   return (
-    <div className="range-bar" title={isStandard ? 'Range shown is a general reference, not lab-printed' : undefined}>
+    <div className={`range-bar${compact ? ' compact' : ''}`} title={isStandard ? 'Range shown is a general reference, not lab-printed' : undefined}>
       <div className="range-bar-track">
         <div className="range-bar-band" style={{ left: `${bandStartPct}%`, width: `${bandEndPct - bandStartPct}%` }} />
         <div
@@ -53,10 +54,10 @@ export function RangeBar({ value, low, high, status, isStandard }: Props) {
           style={{ left: `${valuePct}%`, background: dotColor, borderStyle: isStandard ? 'solid' : 'none' }}
         />
       </div>
-      <div className="range-bar-labels">
+      {!compact && <div className="range-bar-labels">
         <span>{low ?? ''}</span>
         <span>{high ?? ''}</span>
-      </div>
+      </div>}
     </div>
   )
 }

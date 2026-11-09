@@ -380,8 +380,9 @@ export default function App() {
           />
         )}
 
-        {tab === 'markers' &&
-          (selectedMarker ? (
+        {tab === 'markers' && (
+          <div className="content-column">
+          {selectedMarker ? (
             <MarkerDetail
               markerKey={selectedMarker}
               results={displayResults}
@@ -402,13 +403,15 @@ export default function App() {
                 onAddCustomMarker={handleAddCustomMarker}
               />
             </>
-          ))}
+          )}
+          </div>
+        )}
 
         {tab === 'testplan' && (
-          <>
+          <div className="content-column">
             <PageHeader title="Test Plan" subtitle="What's due next, based on your results and their usual cadence." />
             <TestPlan results={displayResults} profile={profile} />
-          </>
+          </div>
         )}
 
         {tab === 'upload' && (
@@ -439,7 +442,7 @@ export default function App() {
       <nav className="tabs">
         <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>
           <Icon name="heart" className="tab-icon" />
-          <span className="tab-label">Dashboard</span>
+          <span className="tab-label">Insights</span>
         </button>
         <button
           className={tab === 'markers' ? 'active' : ''}

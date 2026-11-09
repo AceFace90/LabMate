@@ -1126,3 +1126,111 @@ nav.tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset
   .split-2 { gap: 20px; }
   .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ---- iOS Health-style Markers list ---- */
+.content-column { max-width: 880px; margin-left: auto; margin-right: auto; }
+.cat-block { margin-bottom: 28px; }
+.cat-head { display: flex; align-items: center; gap: 12px; margin: 0 4px 10px; }
+.cat-head h3 { margin: 0; font-size: 20px; font-weight: 700; color: var(--text-primary); }
+.cat-head p { margin: 2px 0 0; font-size: 13px; color: var(--text-secondary); }
+.cat-icon { width: 28px; height: 28px; flex: none; }
+.list-card { background: var(--surface-1); border-radius: var(--card-radius); overflow: hidden; }
+.list-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 18px; background: none; border: 0; border-radius: 0; text-align: left; color: var(--text-primary); cursor: pointer; font: inherit; }
+.list-row + .list-row, .list-row + .list-form { border-top: 1px solid var(--gridline); }
+.list-row:hover { background: var(--fill); }
+.list-main { flex: 1; min-width: 0; }
+.list-name { font-size: 16px; font-weight: 600; }
+.list-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+.list-value { display: flex; align-items: baseline; gap: 6px; flex: none; }
+.list-value .dot { width: 8px; height: 8px; border-radius: 50%; align-self: center; }
+.list-value .v { font-size: 18px; font-weight: 700; }
+.list-value .u { font-size: 13px; color: var(--text-secondary); }
+.list-row .chev { width: 14px; height: 14px; color: var(--text-secondary); opacity: .6; flex: none; }
+.add-row { color: var(--accent); font-weight: 600; }
+.add-row .add-icon { width: 22px; height: 22px; }
+.list-form { padding: 14px 18px; }
+.range-bar.compact { margin-top: 6px; max-width: 220px; }
+.range-bar.compact .range-bar-track { height: 4px; }
+
+/* ---- Marker detail ---- */
+.detail-head { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text-secondary); margin: 8px 4px 0; }
+.detail-head .cat-icon { width: 22px; height: 22px; }
+.story-headline { font-size: 30px; font-weight: 800; margin: 6px 4px 6px; color: var(--text-primary); }
+.story-narrative { color: var(--text-secondary); font-size: 15px; line-height: 1.45; margin: 0 4px 16px; }
+.detail-card { border-radius: var(--card-radius); }
+.latest-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); letter-spacing: .04em; }
+.latest-value { font-size: 34px; font-weight: 800; }
+.latest-unit { font-size: 16px; color: var(--text-secondary); font-weight: 600; }
+.latest-date { font-size: 13px; color: var(--text-secondary); }
+.latest-readout { margin-bottom: 8px; }
+.range-caption { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-secondary); margin-top: 10px; }
+.detail-desc { font-size: 13px; color: var(--text-secondary); margin: 10px 0 0; }
+.metric-rows { margin: 16px 0; }
+.list-row.static { cursor: default; }
+.list-row.static:hover { background: none; }
+.history-title { font-size: 20px; margin: 20px 4px 8px; }
+
+/* ---- Test plan ---- */
+.plan-row { align-items: flex-start; }
+.plan-icon { width: 26px; height: 26px; flex: none; margin-top: 1px; }
+.plan-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.range-bar.compact .range-bar-track { height: 4px; border-radius: 2px; }
+.range-bar.compact .range-bar-band { height: 4px; border-radius: 2px; }
+.range-bar.compact .range-bar-dot { width: 9px; height: 9px; }
+/* Match iOS MarkerRangeBar: 6pt track, 12pt dot with a 2pt card-coloured ring (no outline). */
+.range-bar.compact .range-bar-track { height: 6px; border-radius: 3px; }
+.range-bar.compact .range-bar-band { height: 6px; border-radius: 3px; }
+.range-bar.compact .range-bar-dot { width: 12px; height: 12px; box-sizing: border-box; border: 2px solid var(--surface-1) !important; box-shadow: none; }
+
+/* ---- Insights / Dashboard (iOS-style) ---- */
+.dash-greeting { font-size: 15px; color: var(--text-secondary); margin: 4px 4px 12px; }
+.chip-strip { display: flex; justify-content: safe center; gap: 10px; overflow-x: auto; padding: 2px 2px 14px; margin-bottom: 8px; }
+.chip { display: flex; align-items: center; gap: 10px; flex: none; background: var(--surface-1); border: 0; border-radius: 18px; padding: 10px 16px 10px 12px; cursor: pointer; text-align: left; color: var(--text-primary); }
+.chip small { display: block; font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+.chip b { font-size: 16px; }
+.hero-visual { display: flex; justify-content: center; margin: 12px 0 8px; }
+.score-ring { position: relative; flex: none; }
+.score-ring svg { display: block; }
+.score-ring-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--text-primary); }
+.story-footnote { font-size: 13px; color: var(--text-secondary); margin: -8px 4px 16px; }
+.dash-section { margin-top: 28px; }
+.section-title { font-size: 22px; font-weight: 800; margin: 0 4px 6px; }
+.section-sub { font-size: 15px; color: var(--text-secondary); margin: 0 4px 12px; line-height: 1.4; }
+.section-sub.small { font-size: 12px; margin-top: 10px; }
+.card-eyebrow { font-size: 12px; font-weight: 600; color: var(--text-secondary); letter-spacing: .04em; text-transform: uppercase; }
+.card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 8px; }
+.card-title-row h3, .finding-toggle h3 { margin: 0; font-size: 26px; font-weight: 800; }
+.card-narrative { font-size: 15px; color: var(--text-secondary); line-height: 1.45; margin: 10px 0; }
+.detail-table { margin: 6px 0; }
+.detail-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: 14px; color: var(--text-secondary); }
+.detail-row + .detail-row { border-top: 1px solid var(--gridline); }
+.detail-row strong { color: var(--text-primary); font-weight: 500; text-align: right; }
+.info-links { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px; }
+.info-links button, .link-btn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.info-card { font-size: 13px; line-height: 1.5; color: var(--text-secondary); margin-top: 12px; border-radius: var(--card-radius); }
+.contributor { align-items: center; }
+.contributor .list-main { flex: 1; }
+.contrib-status { font-size: 19px; font-weight: 700; margin: 2px 0; }
+.finding-card { margin-top: 12px; }
+.finding-toggle { display: flex; width: 100%; align-items: center; justify-content: space-between; background: none; border: 0; padding: 0; text-align: left; color: var(--text-primary); cursor: pointer; }
+.finding-detail { border-top: 1px solid var(--gridline); margin-top: 12px; padding-top: 12px; }
+.finding-marker-row { margin-bottom: 14px; }
+.finding-marker-main { display: flex; justify-content: space-between; }
+
+/* ---- Desktop: use the width instead of leaving big empty margins ---- */
+@media (min-width: 1100px) {
+  .content-column { max-width: 1180px; }
+  .dash-columns, .marker-list { column-count: 2; column-gap: 32px; }
+  .marker-list .story-headline, .marker-list .story-narrative { column-span: all; }
+  .cat-block, .dash-section, .dash-columns > .card { break-inside: avoid-column; }
+  .dash-section:first-child { margin-top: 0; }
+  .dash-columns .list-row, .dash-columns .card { break-inside: avoid; }
+  .dash-columns .section-title, .marker-list .cat-head { break-after: avoid; }
+}
+@media (min-width: 1500px) {
+  .content-column { max-width: 1360px; }
+}
+
+.gauge-arc { position: relative; flex: none; }
+.gauge-arc svg { display: block; }
+.gauge-arc-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 600; font-family: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif; padding: 0 24px; }

@@ -55,7 +55,7 @@ nonisolated enum HealthColor {
         case .metabolic: return "flame.fill"
         case .heart_lipids: return "heart.fill"
         case .blood_marrow: return "drop.circle.fill"
-        case .hormones: return "waveform.path.ecg"
+        case .hormones: return "point.3.filled.connected.trianglepath.dotted"
         case .nutrition: return "leaf.fill"
         case .gut_health: return "allergens.fill"
         case .autoimmunity: return "shield.lefthalf.filled"

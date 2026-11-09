@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 // Inline SVG icons drawn to echo the SF Symbols used by the native iOS app
 // (heart.fill, drop.fill, calendar.badge.checkmark, ...). They inherit `currentColor`
 // so tab/active colouring works from CSS, and scale with font-size via 1em.
@@ -17,8 +19,154 @@ export type IconName =
   | 'warning'
   | 'trash'
   | 'chevronUpDown'
+  | 'chevronRight'
+  | 'clipboard'
+  | 'docPlus'
+  | 'chevronLeft'
+  | 'plusCircle'
+  | 'vial'
+  | 'atom'
+  | 'atomOld'
+  | 'flame'
+  | 'dropCircle'
+  | 'pulse'
+  | 'molecule'
+  | 'leaf'
+  | 'bacteria'
+  | 'shield'
+  | 'asterisk'
+  | 'dumbbell'
+  | 'runner'
+  | 'figure'
+  | 'grid'
+  | 'stethoscope'
+  | 'caseCross'
+  | 'qCircle'
+  | 'clockCircle'
+  | 'refreshCircle'
+  | 'calendarCircle'
+  | 'checkCircle'
+
+// Stroke-drawn glyphs (the svg root fills with currentColor, so these opt out of the fill).
+const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
+
+// A filled status circle with a white glyph on top (Test Plan reason icons).
+const circleGlyph = (d: string) => (
+  <>
+    <circle cx="12" cy="12" r="10" />
+    <path d={d} fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+  </>
+)
 
 const PATHS: Record<IconName, JSX.Element> = {
+  clipboard: (
+    <path
+      fillRule="evenodd"
+      d="M9 2h6a2 2 0 0 1 2 2h1.5A2.5 2.5 0 0 1 21 6.5v13a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 19.5v-13A2.5 2.5 0 0 1 5.5 4H7a2 2 0 0 1 2-2Zm0 2v1h6V4H9Zm-2 7h10v2H7v-2Zm0 4h7v2H7v-2Z"
+    />
+  ),
+  docPlus: (
+    <path
+      fillRule="evenodd"
+      d="M7 2h6.6L20 8.4V20a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm5 9v2.5H9.5v2H12V18h2v-2.5h2.5v-2H14V11h-2Z"
+    />
+  ),
+  chevronRight: <path d="M9 5l7 7-7 7" {...S} />,
+  chevronLeft: <path d="M15 5l-7 7 7 7" {...S} />,
+  plusCircle: (
+    <path
+      fillRule="evenodd"
+      d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 5v4h4v2h-4v4h-2v-4H7v-2h4V7h2Z"
+    />
+  ),
+  vial: <path d="M8 2.5h8a1 1 0 0 1 0 2h-1V16a3 3 0 0 1-6 0V4.5H8a1 1 0 0 1 0-2Z" />,
+  atom: (
+    <>
+      <path d="M12 2.2 20 6.8v10.4L12 21.8 4 17.2V6.8L12 2.2Z" />
+      <path d="M4.3 7 12 11.5 19.7 7M12 11.5v9.8" fill="none" stroke="#fff" strokeWidth={1.6} strokeLinejoin="round" />
+    </>
+  ),
+  atomOld: (
+    <>
+      <path fillRule="evenodd" d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 2.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  flame: (
+    <path d="M12 2c.4 3.2-2 5-3.6 7C7 10.7 6 12.3 6 14.5a6 6 0 0 0 12 0c0-2.4-1.2-4.2-2.4-5.6-.4 1.2-1 2-1.9 2.4.5-2.9-.4-6.2-1.7-9.3Z" />
+  ),
+  dropCircle: (
+    <path
+      fillRule="evenodd"
+      d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4.5c.2 0 .4.1.5.2 1.6 1.9 4 4.7 4 7.1a4.5 4.5 0 0 1-9 0c0-2.4 2.4-5.2 4-7.1.1-.1.3-.2.5-.2Z"
+    />
+  ),
+  molecule: (
+    <>
+      <path d="M7.5 8.5 12 13l5-3.5M12 13v5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+      <circle cx="6" cy="7" r="3" />
+      <circle cx="18" cy="8" r="2.4" />
+      <circle cx="12" cy="18.5" r="3" />
+    </>
+  ),
+  pulse: <path d="M3 12h4l2.5-6 4 12 2.5-6H21" {...S} />,
+  leaf: (
+    <path d="M20 3C10 3 4 8 4 15c0 1.6.4 3 1 4.2C6.2 14.5 9 11.5 13 9.5c-3.5 3-5.5 6.5-6.2 10.7.8.5 1.8.8 3 .8C17 21 20 14 20 3Z" />
+  ),
+  bacteria: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="12" cy="4" r="1.8" />
+      <circle cx="12" cy="20" r="1.8" />
+      <circle cx="4.8" cy="8" r="1.8" />
+      <circle cx="19.2" cy="8" r="1.8" />
+      <circle cx="4.8" cy="16" r="1.8" />
+      <circle cx="19.2" cy="16" r="1.8" />
+    </>
+  ),
+  shield: <path d="M12 2.2 4 5.2v6c0 5 3.4 8.6 8 10.6 4.6-2 8-5.6 8-10.6v-6L12 2.2Z" />,
+  asterisk: <path d="M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9" {...S} strokeWidth={3} />,
+  dumbbell: <path d="M2 9.5h2.5v5H2v-5Zm2.5-2.5H8v10H4.5V7ZM8 10.5h8v3H8v-3ZM16 7h3.5v10H16V7Zm3.5 2.5H22v5h-2.5v-5Z" />,
+  runner: (
+    <>
+      <circle cx="15" cy="4.5" r="2.6" />
+      <path d="M13 9l-3 3 3 2.5-1.5 5.5M13 9l3.5 2.5 3-.5M10 12l-3.5 1" {...S} strokeWidth={3.2} />
+    </>
+  ),
+  figure: (
+    <>
+      <circle cx="12" cy="4.5" r="2.8" />
+      <path d="M12 8v6M5 10.5l7-2 7 2M12 14l-3 7M12 14l3 7" {...S} strokeWidth={3.2} />
+    </>
+  ),
+  grid: (
+    <>
+      <rect x="3" y="3" width="8" height="8" rx="2.2" />
+      <rect x="13" y="3" width="8" height="8" rx="2.2" />
+      <rect x="3" y="13" width="8" height="8" rx="2.2" />
+      <rect x="13" y="13" width="8" height="8" rx="2.2" />
+    </>
+  ),
+  stethoscope: (
+    <>
+      <path d="M6 3.5V9a4 4 0 0 0 8 0V3.5M10 13v1.5a4.5 4.5 0 0 0 9 0v-1.5" {...S} />
+      <circle cx="19" cy="11.5" r="2.2" {...S} />
+    </>
+  ),
+  caseCross: (
+    <>
+      <path
+        fillRule="evenodd"
+        d="M6 7h12a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-7a3 3 0 0 1 3-3Zm5 3.5v2H9v2h2v2h2v-2h2v-2h-2v-2h-2Z"
+      />
+      <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7" {...S} />
+    </>
+  ),
+  qCircle: circleGlyph('M9.6 9.4a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.2.9-1.2 1.7M12 16.4v.1'),
+  clockCircle: circleGlyph('M12 7v5l3 2'),
+  refreshCircle: circleGlyph('M8 12a4 4 0 0 1 7-2.6M16 12a4 4 0 0 1-7 2.6M15.2 7.6v2.2h-2.2M8.8 16.4v-2.2H11'),
+  calendarCircle: circleGlyph('M8.5 10.5h7M9.5 8V6.8M14.5 8V6.8M8.5 9h7v6.5h-7z'),
+  checkCircle: circleGlyph('M8 12.3l2.7 2.7 5.3-5.6'),
   chevronUpDown: (
     <path d="M12 3.2c.3 0 .6.1.8.3l4.2 4.2a1.1 1.1 0 0 1-1.6 1.6L12 5.9 8.6 9.3A1.1 1.1 0 0 1 7 7.7l4.2-4.2c.2-.2.5-.3.8-.3Zm-5 13.1a1.1 1.1 0 0 1 1.6 0l3.4 3.4 3.4-3.4a1.1 1.1 0 0 1 1.6 1.6l-4.2 4.2a1.1 1.1 0 0 1-1.6 0L7 17.9a1.1 1.1 0 0 1 0-1.6Z" />
   ),
@@ -73,7 +221,17 @@ const PATHS: Record<IconName, JSX.Element> = {
   ),
 }
 
-export function Icon({ name, className, size }: { name: IconName; className?: string; size?: number | string }) {
+export function Icon({
+  name,
+  className,
+  size,
+  style,
+}: {
+  name: IconName
+  className?: string
+  size?: number | string
+  style?: CSSProperties
+}) {
   return (
     <svg
       className={className ? `icon ${className}` : 'icon'}
@@ -83,6 +241,7 @@ export function Icon({ name, className, size }: { name: IconName; className?: st
       fill="currentColor"
       aria-hidden="true"
       focusable="false"
+      style={style}
     >
       {PATHS[name]}
     </svg>

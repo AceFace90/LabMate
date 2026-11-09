@@ -1,13 +1,16 @@
 import { formatIsoDate } from '../lib/dates'
 import { actionableOnly, buildTestPlan, type TestRecommendation } from '../lib/testPlanner'
 import type { MarkerResult, Profile } from '../types'
+import { Icon, type IconName } from './Icon'
 
 interface Props {
   results: MarkerResult[]
   profile: Profile
 }
 
-const REASON_LABEL: Record<TestRecommendation['reason'], string> = {
+type Reason = TestRecommendation['reason']
+
+const REASON_LABEL: Record<Reason, string> = {
   missing: 'Never tested',
   overdue: 'Overdue',
   out_of_range_followup: 'Follow-up',
@@ -15,7 +18,7 @@ const REASON_LABEL: Record<TestRecommendation['reason'], string> = {
   tested_recently: 'Up to date',
 }
 
-const REASON_COLOR: Record<TestRecommendation['reason'], string> = {
+const REASON_COLOR: Record<Reason, string> = {
   missing: 'var(--status-serious)',
   overdue: 'var(--status-warning)',
   out_of_range_followup: 'var(--status-critical)',
@@ -23,63 +26,76 @@ const REASON_COLOR: Record<TestRecommendation['reason'], string> = {
   tested_recently: 'var(--status-good)',
 }
 
+const REASON_ICON: Record<Reason, IconName> = {
+  missing: 'qCircle',
+  overdue: 'clockCircle',
+  out_of_range_followup: 'refreshCircle',
+  due_soon: 'calendarCircle',
+  tested_recently: 'checkCircle',
+}
+
 export function TestPlan({ results, profile }: Props) {
   const plan = buildTestPlan(results, profile)
   const gp = actionableOnly(plan.gp)
   const priv = actionableOnly(plan.private)
-
-  if (gp.length === 0 && priv.length === 0) {
-    return (
-      <div className="card">
-        <p>Nothing due right now based on what's been imported so far.</p>
-      </div>
-    )
-  }
+  const total = gp.length + priv.length
 
   return (
-    <div>
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Your test plan</h3>
-        <p className="cat-desc">
-          A scheduling heuristic, not medical advice: combines what you've never tested, what's overdue for its
-          usual cadence, and what was last out of range and worth rechecking sooner - weighted so core wellness
-          baselines (FBC, kidney/liver/lipids, thyroid, HbA1c, VO2 max, body composition) rank above niche tests due
-          around the same time. Your GP may reasonably order things differently based on your actual history.
-        </p>
-      </div>
-
-      <div className="split-2">
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>From your GP</h3>
-          <div className="test-plan-list">
-            {gp.length === 0 ? <p className="caveat">Nothing due.</p> : gp.map((r) => <TestRow key={r.key} rec={r} />)}
-          </div>
-        </div>
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Private / specialist</h3>
-          <div className="test-plan-list">
-            {priv.length === 0 ? <p className="caveat">Nothing due.</p> : priv.map((r) => <TestRow key={r.key} rec={r} />)}
-          </div>
-        </div>
-      </div>
+    <div className="marker-list">
+      <h2 className="story-headline">{total === 0 ? 'All Up to Date' : `${total} ${total === 1 ? 'Test' : 'Tests'} Due`}</h2>
+      <p className="story-narrative">
+        {total === 0
+          ? "Nothing is due right now based on what's been imported so far."
+          : "A scheduling heuristic, not medical advice: it combines what you've never tested, what's overdue for its usual cadence, and what was last out of range and worth rechecking sooner. Your GP may reasonably order things differently based on your actual history."}
+      </p>
+      {total > 0 && (
+        <>
+          <PlanGroup title="From your GP" icon="stethoscope" recs={gp} />
+          <PlanGroup title="Private / specialist" icon="caseCross" recs={priv} />
+        </>
+      )}
     </div>
   )
 }
 
-function TestRow({ rec }: { rec: TestRecommendation }) {
+function PlanGroup({ title, icon, recs }: { title: string; icon: IconName; recs: TestRecommendation[] }) {
   return (
-    <div className="test-plan-row">
-      <div className="test-plan-row-header">
-        <strong>{rec.label}</strong>
-        <span style={{ color: REASON_COLOR[rec.reason], fontSize: 12, fontWeight: 600 }}>{REASON_LABEL[rec.reason]}</span>
+    <section className="cat-block">
+      <header className="cat-head">
+        <Icon name={icon} className="cat-icon" style={{ color: 'var(--accent)' }} />
+        <div>
+          <h3>{title}</h3>
+        </div>
+      </header>
+      <div className="list-card">
+        {recs.length === 0 ? (
+          <div className="list-row static">
+            <div className="list-sub">Nothing due.</div>
+          </div>
+        ) : (
+          recs.map((r) => <TestRow key={r.key} rec={r} />)
+        )}
       </div>
-      <div className="caveat">{rec.detail}</div>
-      <div className="caveat">
-        {rec.reason === 'missing' ? 'Recommended now' : `Next due: ${formatIsoDate(rec.dueDate)}`}
-        {rec.wellnessCore && ' · core wellness check'}
-      </div>
-      <div className="caveat" style={{ fontStyle: 'italic' }}>
-        {rec.note}
+    </section>
+  )
+}
+
+function TestRow({ rec }: { rec: TestRecommendation }) {
+  const color = REASON_COLOR[rec.reason]
+  return (
+    <div className="list-row static plan-row">
+      <Icon name={REASON_ICON[rec.reason]} className="plan-icon" style={{ color }} />
+      <div className="list-main">
+        <div className="plan-top">
+          <span className="list-name">{rec.label}</span>
+          <span style={{ color, fontSize: 12, fontWeight: 600 }}>{REASON_LABEL[rec.reason]}</span>
+        </div>
+        <div className="list-sub">{rec.detail}</div>
+        <div className="list-sub">
+          {rec.reason === 'missing' ? 'Recommended now' : `Next due: ${formatIsoDate(rec.dueDate)}`}
+          {rec.wellnessCore && ' · core wellness check'}
+        </div>
+        <div className="list-sub" style={{ fontStyle: 'italic' }}>{rec.note}</div>
       </div>
     </div>
   )

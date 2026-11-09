@@ -34,6 +34,7 @@ export function Settings({
 }: Props) {
   const [birthDateInput, setBirthDateInput] = useState(profile.birthDate ?? '')
   const [nameInput, setNameInput] = useState(profile.name ?? '')
+  const [photoFailed, setPhotoFailed] = useState(false)
 
   // Cloud profile data arrives asynchronously (Firestore subscription, after the
   // initial migration), so these text inputs need to resync once it lands - not
@@ -67,12 +68,21 @@ export function Settings({
       <section className="ios-section">
         <div className="ios-group">
           <div className="ios-profile">
-            <picture>
-              <source srcSet={`${base}logo-dark.svg`} media="(prefers-color-scheme: dark)" />
-              <img src={`${base}logo-light.svg`} alt="" />
-            </picture>
+            {user?.photoURL && !photoFailed ? (
+              <img
+                className="avatar"
+                src={user.photoURL}
+                alt=""
+                referrerPolicy="no-referrer"
+                onError={() => setPhotoFailed(true)}
+              />
+            ) : (
+              <div className="avatar avatar-fallback" aria-hidden="true">
+                {(profile.name?.trim() || user?.displayName || user?.email || 'L').charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
-              <div className="name">{profile.name?.trim() || 'LabMate'}</div>
+              <div className="name">{profile.name?.trim() || user?.displayName || 'LabMate'}</div>
               <div className="email">{user?.email ?? 'Stored in this browser'}</div>
             </div>
           </div>
@@ -89,12 +99,6 @@ export function Settings({
           )}
           {user ? (
             <>
-              <div className="ios-row">
-                <span className="ios-row-label">
-                  {user.displayName && <strong>{user.displayName}</strong>}
-                  <span className="ios-row-sub">{user.email ?? 'Signed in'}</span>
-                </span>
-              </div>
               <button className="ios-row destructive" onClick={onLogOut} disabled={migrating}>
                 Log Out
               </button>

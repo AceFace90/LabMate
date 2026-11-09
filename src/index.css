@@ -1082,7 +1082,8 @@ button.ios-row:disabled { opacity: 0.4; cursor: default; }
 
 /* Profile header card */
 .ios-profile { display: flex; align-items: center; gap: 14px; padding: 14px 20px; }
-.ios-profile img { width: 56px; height: 56px; border-radius: 13px; }
+.ios-profile .avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex: none; }
+.ios-profile .avatar-fallback { display: flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; font-size: 24px; font-weight: 600; }
 .ios-profile .name { font-size: 22px; font-weight: 700; }
 .ios-profile .email { font-size: 15px; color: var(--text-secondary); }
 

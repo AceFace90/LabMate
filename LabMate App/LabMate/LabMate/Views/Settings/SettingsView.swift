@@ -60,7 +60,7 @@ struct SettingsView: View {
                     .clipShape(.rect(cornerRadius: 13, style: .continuous))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(profile.name?.isEmpty == false ? profile.name! : "LabMate").font(.title2.weight(.bold))
+                    Text(profile.name?.isEmpty == false ? profile.name! : (store.user?.displayName ?? "LabMate")).font(.title2.weight(.bold))
                     Text(store.user?.email ?? "Stored on this device")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
@@ -88,13 +88,7 @@ struct SettingsView: View {
             if !store.isCloudAvailable {
                 Label("Cloud sync unavailable", systemImage: "icloud.slash")
                     .foregroundStyle(.secondary)
-            } else if let user = store.user {
-                VStack(alignment: .leading, spacing: 2) {
-                    if let n = user.displayName { Text(n).font(.headline) }
-                    Text(user.email ?? "Signed in").font(.subheadline).foregroundStyle(.secondary)
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Signed in as \(user.email ?? user.displayName ?? "your account")")
+            } else if store.user != nil {
                 Button("Log Out", role: .destructive) { store.logOut() }
                     .disabled(locked)
             } else {

@@ -177,6 +177,9 @@ private final class AppleAuthDelegate: NSObject, ASAuthorizationControllerDelega
     }
     @MainActor func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        return scenes.flatMap(\.windows).first { $0.isKeyWindow } ?? ASPresentationAnchor()
+        if let window = scenes.flatMap(\.windows).first(where: { $0.isKeyWindow }) { return window }
+        // A sign-in sheet is only ever requested from a foreground scene; init(windowScene:) replaces the
+        // iOS 26-deprecated bare UIWindow().
+        return ASPresentationAnchor(windowScene: scenes[0])
     }
 }

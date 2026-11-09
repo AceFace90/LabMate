@@ -233,11 +233,9 @@ export function Settings({
             illustrative scheduling and wellness heuristics, not diagnostic or medical advice. General information
             only - talk to your doctor before changing anything based on these results.
           </div>
-          <div className="ios-row" style={{ fontSize: 15 }}>
-            <a href={`${base}privacy.html`} target="_blank" rel="noopener noreferrer">
-              Privacy Policy
-            </a>
-          </div>
+          <a className="ios-row" href={`${base}privacy.html`} target="_blank" rel="noopener noreferrer">
+            <span className="ios-row-label">Privacy Policy</span>
+          </a>
         </div>
       </section>
     </div>

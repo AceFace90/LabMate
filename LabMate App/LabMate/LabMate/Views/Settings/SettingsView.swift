@@ -234,9 +234,11 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             if let url = AppLinks.privacyPolicy {
                 Link(destination: url) { Label("Privacy Policy", systemImage: "hand.raised") }
+                    .foregroundStyle(.primary)
             }
             if let url = AppLinks.support {
                 Link(destination: url) { Label("Support", systemImage: "questionmark.circle") }
+                    .foregroundStyle(.primary)
             }
         }
     }

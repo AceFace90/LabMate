@@ -63,7 +63,7 @@ export function Settings({
   const theme = profile.theme ?? 'auto'
 
   return (
-    <div className="form-column">
+    <div>
       <section className="ios-section">
         <div className="ios-group">
           <div className="ios-profile">
@@ -232,6 +232,11 @@ export function Settings({
             LabMate tracks your blood test results over time. Biological age, scores and the test plan are
             illustrative scheduling and wellness heuristics, not diagnostic or medical advice. General information
             only - talk to your doctor before changing anything based on these results.
+          </div>
+          <div className="ios-row" style={{ fontSize: 15 }}>
+            <a href={`${base}privacy.html`} target="_blank" rel="noopener noreferrer">
+              Privacy Policy
+            </a>
           </div>
         </div>
       </section>

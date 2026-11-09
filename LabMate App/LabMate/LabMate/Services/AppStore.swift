@@ -1,4 +1,5 @@
 import Foundation
+import AuthenticationServices
 import Observation
 import FirebaseAuth
 
@@ -326,6 +327,17 @@ final class AppStore {
         }
     }
 
+    func signInWithApple() async {
+        authError = nil
+        do { try await auth.signInWithApple() }
+        catch {
+            // 1001 = user cancelled the Apple sheet.
+            if (error as? ASAuthorizationError)?.code == .canceled { return }
+            NSLog("Apple sign-in failed: \(error)")
+            authError = "Sign-in failed. Please try again."
+        }
+    }
+
     /// Signs out if signed in, then forces the splash (matches web handleLogOut).
     func logOut() {
         authError = nil
@@ -343,6 +355,7 @@ final class AppStore {
         guard let fb = auth.firebaseUser else { return }
         authError = nil
         do {
+            try await auth.revokeAppleTokenIfNeeded()
             try await cloud.deleteAccount(user: fb) { [auth] in try await auth.reauthenticate() }
         } catch {
             NSLog("Account deletion failed: \(error)")

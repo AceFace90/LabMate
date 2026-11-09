@@ -100,6 +100,17 @@ struct SplashView: View {
                 .controlSize(.large)
                 .disabled(store.migrating)
                 .accessibilityHint("Sync across devices with a secure cloud backup")
+
+                if Features.signInWithApple {
+                Button { Task { await store.signInWithApple() } } label: {
+                    Label("Continue with Apple", systemImage: "applelogo")
+                        .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .disabled(store.migrating)
+                .accessibilityHint("Sync across devices using your Apple account")
+                }
                 Text("Sync across devices - secure cloud backup")
                     .font(.footnote).foregroundStyle(.secondary)
             }

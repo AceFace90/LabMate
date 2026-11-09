@@ -102,6 +102,12 @@ struct SettingsView: View {
                     HealthLinkLabel(title: locked ? "Signing in..." : "Sign in with Google", symbol: "person.crop.circle.badge.checkmark")
                 }
                 .disabled(locked)
+                if Features.signInWithApple {
+                    Button { Task { await store.signInWithApple() } } label: {
+                        HealthLinkLabel(title: locked ? "Signing in..." : "Sign in with Apple", symbol: "applelogo")
+                    }
+                    .disabled(locked)
+                }
             }
         } header: {
             Text("Account")
@@ -223,6 +229,15 @@ struct SettingsView: View {
             Text("LabMate tracks your blood test results over time. Biological age, scores and the test plan are illustrative scheduling and wellness heuristics, not diagnostic or medical advice. General information only - talk to your doctor before changing anything based on these results.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+            Text("Biological age uses the PhenoAge formula (Levine et al. 2018) and kidney function uses published eGFR equations; see the info cards in Insights for sources and limitations. LabMate is not a medical device and has no regulatory clearance. Always check with a doctor before making medical decisions.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            if let url = AppLinks.privacyPolicy {
+                Link(destination: url) { Label("Privacy Policy", systemImage: "hand.raised") }
+            }
+            if let url = AppLinks.support {
+                Link(destination: url) { Label("Support", systemImage: "questionmark.circle") }
+            }
         }
     }
 

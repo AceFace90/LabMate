@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="light dark" />
+<title>LabMate Privacy Policy</title>
+<style>
+  :root { --bg:#f2f2f7; --card:#fff; --text:#000; --muted:#6c6c70; --accent:#ea3f5a; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#000; --card:#1c1c1e; --text:#fff; --muted:#98989f; } }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text",Segoe UI,Roboto,sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:32px 20px 64px; }
+  h1 { font-size:34px; margin:0 0 4px; }
+  h2 { font-size:20px; margin:32px 0 8px; }
+  .meta { color:var(--muted); margin:0 0 24px; }
+  .card { background:var(--card); border-radius:18px; padding:4px 20px 16px; }
+  a { color:var(--accent); }
+  li { margin:4px 0; }
+  table { border-collapse:collapse; width:100%; font-size:15px; }
+  th, td { text-align:left; padding:8px 8px 8px 0; border-bottom:1px solid rgba(128,128,128,.25); vertical-align:top; }
+</style>
+</head>
+<body>
+<main>
+<h1>Privacy Policy</h1>
+<p class="meta">LabMate (iOS app and web app) &middot; Effective 9 November 2026</p>
+
+<div class="card">
+
+<h2>What LabMate is</h2>
+<p>LabMate lets you track your blood test results over time, see trends, and get illustrative wellness scores such as biological age. It is not a medical device and does not give medical advice. Talk to your doctor before making medical decisions.</p>
+
+<h2>Two ways to use it</h2>
+<ul>
+  <li><strong>Without an account:</strong> everything stays on your device. We never receive it.</li>
+  <li><strong>With an account (Sign in with Google):</strong> your data is also stored in the cloud so it syncs across your devices.</li>
+</ul>
+
+<h2>What we collect</h2>
+<table>
+  <tr><th>Data</th><th>Why</th><th>Where it lives</th></tr>
+  <tr><td>Lab results you import or enter (marker, value, unit, date), and any custom markers you create</td><td>The core function: showing your results, trends and scores</td><td>On your device; also in the cloud if signed in</td></tr>
+  <tr><td>Profile: name, date of birth, sex, creatine-supplement setting, theme</td><td>Greeting, age-based comparisons, sex-specific kidney-function equations</td><td>On your device; also in the cloud if signed in</td></tr>
+  <tr><td>Google account name, email address, profile photo and a unique user ID</td><td>Signing you in and linking your data to your account</td><td>Our authentication provider (Firebase Authentication)</td></tr>
+  <tr><td>Apple Health data (iOS app only, if you turn it on)</td><td>Reads VO2 max, body fat %, lean mass, date of birth and sex; writes lab results that have an Apple Health equivalent, such as blood glucose</td><td>Apple Health on your device. Values you choose to keep in LabMate are stored like any other result</td></tr>
+</table>
+<p>Health and lab data is sensitive. We collect only what the app needs to work.</p>
+
+<h2>Reports, photos and scans</h2>
+<p>When you import a PDF, pasted text, photo or camera scan of a report, it is read on your device to extract results (the iOS app uses Apple&rsquo;s on-device text recognition; the web app reads PDFs in your browser). The file or image itself is not uploaded or stored by us. Only the extracted results that you review and save are kept.</p>
+
+<h2>Who processes your data</h2>
+<p>If you sign in, your data is stored with Google Firebase (Authentication and Cloud Firestore), which acts as our service provider. Access is restricted so that only your signed-in account can read or write your records. The web app is hosted on GitHub Pages, which serves the site files only and does not receive your results.</p>
+<p>We do not sell your data. We do not share it with advertisers or data brokers, do not use it for advertising or marketing, do not track you across other companies&rsquo; apps or sites, and do not use it to train AI models. LabMate contains no advertising or third-party analytics.</p>
+
+<h2>How long we keep it</h2>
+<p>On your device, until you delete it or uninstall the app. In the cloud, until you delete it, or until you delete your account.</p>
+
+<h2>Your choices and deleting your data</h2>
+<ul>
+  <li><strong>Export:</strong> Settings &rarr; Export Data gives you a JSON copy of your data.</li>
+  <li><strong>Delete all data:</strong> Settings &rarr; Delete All Data permanently removes every result, your profile and custom markers (from the cloud too, if you are signed in).</li>
+  <li><strong>Delete account:</strong> Settings &rarr; Delete Account removes your account and all synced data.</li>
+  <li><strong>Apple Health:</strong> turn it off in LabMate Settings, or change permissions in the iOS Settings app. Data already written to Apple Health stays there until you remove it in the Health app.</li>
+  <li><strong>Camera:</strong> used only when you choose to scan a report; you can revoke it in iOS Settings.</li>
+</ul>
+<p>Deletion is permanent and cannot be undone. If you cannot use the in-app options, email us (below) and we will delete your data on request.</p>
+
+<h2>Security</h2>
+<p>Data is encrypted in transit, and access to cloud records is limited to the account that owns them. No system is perfectly secure, so keep your device and Google account protected.</p>
+
+<h2>Children</h2>
+<p>LabMate is not directed at children under 13, and we do not knowingly collect their data.</p>
+
+<h2>Changes</h2>
+<p>If this policy changes, we will update the date above and, for material changes, tell you in the app.</p>
+
+<h2>Contact</h2>
+<p>Questions or deletion requests: <a href="mailto:wacorrey+labmate@gmail.com">wacorrey+labmate@gmail.com</a></p>
+
+</div>
+</main>
+</body>
+</html>

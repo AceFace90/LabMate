@@ -76,6 +76,7 @@
         "GENERATE_INFOPLIST_FILE": "YES",
         "INFOPLIST_KEY_CFBundleDisplayName": "LabMate",
         "INFOPLIST_KEY_LSApplicationCategoryType": "public.app-category.healthcare-fitness",
+        "INFOPLIST_KEY_NSCameraUsageDescription": "LabMate uses the camera to scan a printed pathology report so its results can be imported. Images are read on your device and are not uploaded.",
         "INFOPLIST_KEY_NSHealthShareUsageDescription": "LabMate reads your VO2 max and body composition from Apple Health to show them alongside your lab results.",
         "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "LabMate can save results you enter or import (e.g. glucose, weight, body fat) to Apple Health.",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]": "YES",

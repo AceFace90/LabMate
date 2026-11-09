@@ -423,7 +423,7 @@ export default function App() {
         )}
 
         {tab === 'settings' && (
-          <>
+          <div className="form-column">
             <PageHeader title="Settings" subtitle="Your profile, appearance and account." />
             <Settings
               profile={profile}
@@ -436,7 +436,7 @@ export default function App() {
               onLogOut={handleLogOut}
               onDeleteAccount={handleDeleteAccount}
             />
-          </>
+          </div>
         )}
       </main>
 

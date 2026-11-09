@@ -979,7 +979,6 @@ table.results-table th, table.results-table td { border-bottom: 0.5px solid var(
 
 /* Brand mark */
 .brand-mark { display: block; margin: 0 auto 12px; width: 72px; height: 72px; border-radius: 16px; }
-.header-brand { display: inline-block; width: 28px; height: 28px; border-radius: 7px; vertical-align: -6px; margin-right: 8px; }
 
 /* Floating translucent tab bar */
 nav.tabs {
@@ -1001,7 +1000,7 @@ nav.tabs button.active { color: var(--accent); background: var(--accent-bg); }
 nav.tabs .tab-label { font-size: 10px; }
 
 /* Theme override: pick the logo variant for an explicit data-theme that differs from the OS. */
-.header-brand, .brand-mark { background: var(--surface-1); }
+.brand-mark { background: var(--surface-1); }
 
 /* SF Symbols-style SVG icons (components/Icon.tsx). */
 .icon { display: inline-block; flex-shrink: 0; vertical-align: -0.125em; }

@@ -54,10 +54,9 @@ struct SettingsView: View {
     private var header: some View {
         Section {
             HStack(spacing: 14) {
-                Image("AppLogo")
-                    .resizable().scaledToFit()
+                avatar
                     .frame(width: 56, height: 56)
-                    .clipShape(.rect(cornerRadius: 13, style: .continuous))
+                    .clipShape(.circle)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(profile.name?.isEmpty == false ? profile.name! : (store.user?.displayName ?? "LabMate")).font(.title2.weight(.bold))
@@ -66,6 +65,27 @@ struct SettingsView: View {
                 }
             }
             .accessibilityElement(children: .combine)
+        }
+    }
+
+    /// Google profile photo when signed in; otherwise a circle with the first initial.
+    @ViewBuilder private var avatar: some View {
+        if let url = store.user?.photoURL {
+            AsyncImage(url: url) { phase in
+                if let image = phase.image { image.resizable().scaledToFill() } else { initialAvatar }
+            }
+        } else {
+            initialAvatar
+        }
+    }
+
+    private var initialAvatar: some View {
+        let source = profile.name?.trimmingCharacters(in: .whitespaces).nonEmpty
+            ?? store.user?.displayName ?? store.user?.email ?? "L"
+        return ZStack {
+            Circle().fill(HealthColor.heart)
+            Text(String(source.prefix(1)).uppercased())
+                .font(.title2.weight(.semibold)).foregroundStyle(.white)
         }
     }
 
@@ -265,4 +285,8 @@ struct SettingsView: View {
     SettingsView()
         .environment(AppStore())
         .environment(AppRouter())
+}
+
+private extension String {
+    var nonEmpty: String? { isEmpty ? nil : self }
 }

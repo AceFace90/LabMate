@@ -56,16 +56,10 @@ function slugify(name: string): string {
 
 // Mirrors GymMate: no persistent app-name header - each non-Home tab gets its
 // own accent-coloured title instead (Dashboard's greeting plays that role there).
-function PageHeader({ title, subtitle, brand = true }: { title: string; subtitle: string; brand?: boolean }) {
+function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div style={{ marginBottom: 16 }}>
       <h2 className="page-title">
-        {brand && (
-          <picture>
-            <source srcSet={`${import.meta.env.BASE_URL}logo-dark.svg`} media="(prefers-color-scheme: dark)" />
-            <img className="header-brand" src={`${import.meta.env.BASE_URL}logo-light.svg`} alt="" />
-          </picture>
-        )}
         {title}
       </h2>
       <p className="page-subtitle">{subtitle}</p>
@@ -426,7 +420,7 @@ export default function App() {
 
         {tab === 'settings' && (
           <div className="form-column">
-            <PageHeader title="Settings" subtitle="Your profile, appearance and account." brand={false} />
+            <PageHeader title="Settings" subtitle="Your profile, appearance and account." />
             <Settings
               profile={profile}
               onSaveProfile={handleSaveProfile}

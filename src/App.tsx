@@ -205,9 +205,11 @@ export default function App() {
   // can never go stale after a source value is edited or deleted.
   const displayResults = useMemo(() => [...results, ...deriveComputedMarkers(results)], [results])
 
-  function handleImport(newResults: MarkerResult[]) {
-    const merged = mergeResults(results, newResults)
+  function handleImport(newResults: MarkerResult[], removeIds: string[] = []) {
+    const base = results.filter((r) => !removeIds.includes(r.id))
+    const merged = mergeResults(base, newResults)
     if (user) {
+      for (const id of removeIds) deleteResultCloud(user.uid, id).catch(reportCloudError)
       const added = merged.filter((r) => !results.some((existing) => existing.id === r.id))
       for (const result of added) saveResultCloud(user.uid, result).catch(reportCloudError)
     } else {
@@ -417,7 +419,7 @@ export default function App() {
         {tab === 'upload' && (
           <>
             <PageHeader title="Import PDF" subtitle="Add a new pathology report - import the PDF or paste its text." />
-            <UploadFlow onImport={handleImport} />
+            <UploadFlow existing={results} onImport={handleImport} />
           </>
         )}
 

@@ -1,5 +1,6 @@
 import { Icon } from './Icon'
 import { useRef, useState } from 'react'
+import { classifyImport } from '../lib/storage'
 import { getMarker } from '../data/markerCatalog'
 import { formatIsoDate } from '../lib/dates'
 import { PdfPasswordNeededError, PdfWrongPasswordError, parsePdf, runStateMachine, type ParseOutcome } from '../lib/pdfParser'
@@ -7,8 +8,13 @@ import { textToLines } from '../lib/textLines'
 import type { MarkerResult } from '../types'
 
 interface Props {
-  onImport: (results: MarkerResult[]) => void
+  /** Results already stored, used to spot repeats and conflicts in a new report. */
+  existing: MarkerResult[]
+  /** `removeIds` are stored results the user chose to replace with the report's value. */
+  onImport: (results: MarkerResult[], removeIds?: string[]) => void
 }
+
+type ConflictChoice = 'keep' | 'replace' | 'both'
 
 type Stage =
   | { kind: 'idle' }
@@ -18,11 +24,12 @@ type Stage =
   | { kind: 'review'; sourceName: string; outcome: ParseOutcome }
   | { kind: 'error'; message: string }
 
-export function UploadFlow({ onImport }: Props) {
+export function UploadFlow({ existing, onImport }: Props) {
   const [stage, setStage] = useState<Stage>({ kind: 'idle' })
   const [password, setPassword] = useState('')
   const [pastedText, setPastedText] = useState('')
   const [pastedDate, setPastedDate] = useState('')
+  const [choices, setChoices] = useState<Record<string, ConflictChoice>>({})
   const inputRef = useRef<HTMLInputElement>(null)
 
   async function tryParse(file: File, pw?: string) {
@@ -148,75 +155,176 @@ export function UploadFlow({ onImport }: Props) {
         </div>
       )}
 
-      {stage.kind === 'review' && (
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Review before saving</h3>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{stage.sourceName}</p>
-          {stage.outcome.results.length === 0 ? (
-            <p>No recognisable results found.</p>
-          ) : (
-            <table className="results-table">
-              <thead>
-                <tr>
-                  <th>Marker</th>
-                  <th>Date</th>
-                  <th>Value</th>
-                  <th>Range</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stage.outcome.results.map((r) => {
-                  const known = !r.markerKey.startsWith('unmatched:')
-                  return (
-                    <tr key={r.id}>
-                      <td>
-                        {known ? getMarker(r.markerKey)?.label ?? r.rawName : r.rawName}
-                        {!known && <span className="badge">unrecognised</span>}
-                      </td>
-                      <td>{formatIsoDate(r.date)}</td>
-                      <td>
-                        {r.displayValue} {r.unit}
-                        {r.flag && <span className="badge">flagged</span>}
-                      </td>
-                      <td>{r.rangeText || '—'}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          )}
-          {stage.outcome.warnings.length > 0 && (
-            <div className="warning-list">
-              {stage.outcome.warnings.map((w, i) => (
-                <div key={i}><Icon name="warning" className="warn-icon" /> {w}</div>
-              ))}
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button
-              className="primary"
-              disabled={stage.outcome.results.length === 0}
-              onClick={() => {
-                onImport(stage.outcome.results.filter((r) => !r.markerKey.startsWith('unmatched:')))
-                setStage({ kind: 'idle' })
-                setPassword('')
-                setPastedText('')
-                setPastedDate('')
-              }}
-            >
-              Save recognised results
-            </button>
-            {stage.sourceName === 'Pasted text' && (
-              <button className="secondary" onClick={() => setStage({ kind: 'paste' })}>
-                Edit text
-              </button>
+      {stage.kind === 'review' && (() => {
+        const all = stage.outcome.results
+        const recognised = all.filter((r) => !r.markerKey.startsWith('unmatched:'))
+        const unrecognised = all.filter((r) => r.markerKey.startsWith('unmatched:'))
+        const { added, unchanged, conflicts } = classifyImport(existing, recognised)
+        const choiceFor = (id: string): ConflictChoice => choices[id] ?? 'keep'
+        const replaced = conflicts.filter((c) => choiceFor(c.incoming.id) === 'replace')
+        const keptBoth = conflicts.filter((c) => choiceFor(c.incoming.id) === 'both')
+        const toSave = [...added, ...replaced.map((c) => c.incoming), ...keptBoth.map((c) => c.incoming)]
+        const reset = () => {
+          setStage({ kind: 'idle' })
+          setChoices({})
+        }
+        const row = (r: MarkerResult) => (
+          <tr key={r.id}>
+            <td>{getMarker(r.markerKey)?.label ?? r.rawName}</td>
+            <td>{formatIsoDate(r.date)}</td>
+            <td>
+              {r.displayValue} {r.unit}
+              {r.flag && <span className="badge">flagged</span>}
+            </td>
+            <td>{r.rangeText || '—'}</td>
+          </tr>
+        )
+        const head = (
+          <thead>
+            <tr>
+              <th>Marker</th>
+              <th>Date</th>
+              <th>Value</th>
+              <th>Range</th>
+            </tr>
+          </thead>
+        )
+        const summary = [
+          `${added.length} new`,
+          `${unchanged.length} already imported`,
+          ...(conflicts.length ? [`${conflicts.length} differ${conflicts.length === 1 ? 's' : ''} from what's saved`] : []),
+        ].join(' · ')
+
+        return (
+          <div className="card">
+            <h3 style={{ marginTop: 0 }}>Review before saving</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{stage.sourceName}</p>
+
+            {all.length === 0 ? (
+              <p>
+                No results recognised. Check the file is a pathology report with a results table, or paste the
+                results text instead. If the text has no collection date, set one before reading it.
+              </p>
+            ) : (
+              <>
+                <p style={{ fontSize: 14, fontWeight: 600 }}>{summary}</p>
+
+                {conflicts.length > 0 && (
+                  <>
+                    <h4 style={{ marginBottom: 4 }}>Different from what's saved</h4>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 0 }}>
+                      Same marker and date, but a different value. Nothing is overwritten unless you choose to.
+                    </p>
+                    <table className="results-table">
+                      <thead>
+                        <tr>
+                          <th>Marker</th>
+                          <th>Date</th>
+                          <th>Saved</th>
+                          <th>Report</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {conflicts.map(({ incoming, existing: stored }) => (
+                          <tr key={incoming.id}>
+                            <td>{getMarker(incoming.markerKey)?.label ?? incoming.rawName}</td>
+                            <td>{formatIsoDate(incoming.date)}</td>
+                            <td>{stored.displayValue} {stored.unit}</td>
+                            <td>{incoming.displayValue} {incoming.unit}</td>
+                            <td>
+                              <select
+                                value={choiceFor(incoming.id)}
+                                onChange={(e) => setChoices({ ...choices, [incoming.id]: e.target.value as ConflictChoice })}
+                              >
+                                <option value="keep">Keep saved</option>
+                                <option value="replace">Use report value</option>
+                                <option value="both">Keep both</option>
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
+                )}
+
+                {(added.length > 0 || unrecognised.length > 0) && (
+                  <>
+                    <h4 style={{ marginBottom: 4 }}>New results</h4>
+                    <table className="results-table">
+                      {head}
+                      <tbody>
+                        {added.map(row)}
+                        {unrecognised.map((r) => (
+                          <tr key={r.id}>
+                            <td>
+                              {r.rawName}
+                              <span className="badge">unrecognised</span>
+                            </td>
+                            <td>{formatIsoDate(r.date)}</td>
+                            <td>{r.displayValue} {r.unit}</td>
+                            <td>{r.rangeText || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
+                )}
+
+                {added.length === 0 && conflicts.length === 0 && (
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                    Everything in this report is already saved - nothing new to add.
+                  </p>
+                )}
+
+                {unchanged.length > 0 && (
+                  <details style={{ marginTop: 10 }}>
+                    <summary style={{ fontSize: 13, cursor: 'pointer' }}>
+                      Show {unchanged.length} already imported
+                    </summary>
+                    <table className="results-table">
+                      {head}
+                      <tbody>{unchanged.map(row)}</tbody>
+                    </table>
+                  </details>
+                )}
+              </>
             )}
-            <button className="secondary" onClick={() => setStage({ kind: 'idle' })}>
-              Discard
-            </button>
+
+            {stage.outcome.warnings.length > 0 && (
+              <div className="warning-list">
+                {stage.outcome.warnings.map((w, i) => (
+                  <div key={i}><Icon name="warning" className="warn-icon" /> {w}</div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button
+                className="primary"
+                disabled={toSave.length === 0}
+                onClick={() => {
+                  onImport(toSave, replaced.map((c) => c.existing.id))
+                  reset()
+                  setPassword('')
+                  setPastedText('')
+                  setPastedDate('')
+                }}
+              >
+                {toSave.length === 0 ? 'Nothing to save' : `Save ${toSave.length} result${toSave.length === 1 ? '' : 's'}`}
+              </button>
+              {stage.sourceName === 'Pasted text' && (
+                <button className="secondary" onClick={() => setStage({ kind: 'paste' })}>
+                  Edit text
+                </button>
+              )}
+              <button className="secondary" onClick={reset}>
+                Discard
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

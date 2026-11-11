@@ -206,12 +206,17 @@ final class AppStore {
     // MARK: Results
 
     /// Imported (parsed PDF / pasted text) results. Merges with dedupe, then writes Health-compatible rows back.
-    func importResults(_ incoming: [MarkerResult]) {
-        let merged = ResultMerge.mergeResults(results, incoming)
+    func importResults(_ incoming: [MarkerResult], removing removeIds: [String] = []) {
+        let removed = Set(removeIds)
+        let base = results.filter { !removed.contains($0.id) }
+        let merged = ResultMerge.mergeResults(base, incoming)
         let existingIDs = Set(results.map(\.id))
         let added = merged.filter { !existingIDs.contains($0.id) }
         if cloudMode {
-            cloudWrite { [cloud] uid in try await cloud.saveResults(uid: uid, added) }
+            cloudWrite { [cloud] uid in
+                for id in removeIds { try await cloud.deleteResult(uid: uid, id: id) }
+                try await cloud.saveResults(uid: uid, added)
+            }
         } else {
             results = merged
             local.saveResults(merged)

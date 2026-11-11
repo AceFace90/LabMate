@@ -619,6 +619,13 @@ nonisolated enum LabReportParser {
         flushColumnTable()
         flushHistoryTable()
 
+        // No layout-specific parser recognised anything: fall back to marker-anchored parsing.
+        // (Port of the fallback in src/lib/pdfParser.ts.)
+        if results.isEmpty {
+            let anchored = AnchoredParser.parse(fileName: fileName, lines: lines, defaultDate: defaultDate)
+            if !anchored.results.isEmpty { return anchored }
+        }
+
         if datelessRows > 0 {
             warnings.append(
                 "\(datelessRows) result\(datelessRows == 1 ? "" : "s") skipped because no collection date was found - set the collection date, or include the \"Collected\" or \"Date of Observation\" line in what you paste.")

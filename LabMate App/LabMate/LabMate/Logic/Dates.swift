@@ -31,6 +31,50 @@ nonisolated enum DateUtils {
         isoFormatter().string(from: date)
     }
 
+    // MARK: - Finding dates in free text (port of findDatesInText)
+
+    struct FoundDate: Sendable {
+        var iso: String
+        /// UTF-16 offset of the match in the searched text.
+        var index: Int
+        var length: Int
+    }
+
+    private static let months: [String: Int] = ["jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6, "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12]
+    private static let mon = "(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\\.?"
+    private static let isoRx = Rx(#"\b(\d{4})-(\d{2})-(\d{2})\b"#)
+    private static let dayMonthRx = Rx("\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]+\(mon)[\\s,-]+(\\d{4}|\\d{2})\\b", ignoreCase: true)
+    private static let monthDayRx = Rx("\\b\(mon)\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})\\b", ignoreCase: true)
+    private static let slashRx = Rx(#"\b(\d{1,2})/(\d{1,2})/(\d{4}|\d{2})\b"#)
+
+    private static func buildIso(_ y: Int, _ m: Int, _ d: Int) -> String? {
+        var year = y
+        if year < 100 { year += year >= 70 ? 1900 : 2000 }
+        if m < 1 || m > 12 || d < 1 || d > 31 { return nil }
+        return String(format: "%04d-%02d-%02d", year, m, d)
+    }
+
+    /// Every date in a piece of text (2026-11-10, 10 Nov 26, 10 November 2026, Nov 10, 2026,
+    /// 10/11/26). Numeric dates are day-first. Returned in order of appearance.
+    static func findDatesInText(_ text: String) -> [FoundDate] {
+        var found: [FoundDate] = []
+        func add(_ m: RxMatch, _ iso: String?) {
+            guard let iso else { return }
+            let len = m.ranges[0].length
+            if found.contains(where: { m.index < $0.index + $0.length && $0.index < m.index + len }) { return }
+            found.append(FoundDate(iso: iso, index: m.index, length: len))
+        }
+        for m in isoRx.all(text) { add(m, buildIso(Int(m[1]!)!, Int(m[2]!)!, Int(m[3]!)!)) }
+        for m in dayMonthRx.all(text) {
+            add(m, buildIso(Int(m[3]!)!, months[m[2]!.lowercased()] ?? 0, Int(m[1]!)!))
+        }
+        for m in monthDayRx.all(text) {
+            add(m, buildIso(Int(m[3]!)!, months[m[1]!.lowercased()] ?? 0, Int(m[2]!)!))
+        }
+        for m in slashRx.all(text) { add(m, buildIso(Int(m[3]!)!, Int(m[2]!)!, Int(m[1]!)!)) }
+        return found.sorted { $0.index < $1.index }
+    }
+
     /// Parses "dd/mm/yy" or "dd/mm/yyyy" (as printed on Australian pathology reports) to ISO yyyy-mm-dd.
     static func ausDateToIso(_ input: String) -> String? {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)

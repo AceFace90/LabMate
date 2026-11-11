@@ -28,6 +28,10 @@ struct ImportView: View {
     @State private var password = ""
     @State private var passwordError: String?
 
+    enum ConflictChoice: String, CaseIterable { case keep, replace, both }
+    @State private var choices: [String: ConflictChoice] = [:]
+    @State private var showUnchanged = false
+
     @State private var pastedText = ""
     @State private var pastedDateOn = false
     @State private var pastedDate = Date()
@@ -176,7 +180,13 @@ struct ImportView: View {
 
     private func reviewView(_ sourceName: String, _ outcome: ParseOutcome) -> some View {
         let recognised = outcome.results.filter { !$0.markerKey.hasPrefix("unmatched:") }
+        let unmatched = outcome.results.filter { $0.markerKey.hasPrefix("unmatched:") }
         let dates = Set(recognised.map(\.date)).sorted()
+        let cls = ResultMerge.classifyImport(store.results, recognised)
+        func choice(_ id: String) -> ConflictChoice { choices[id] ?? .keep }
+        let replaced = cls.conflicts.filter { choice($0.incoming.id) == .replace }
+        let keptBoth = cls.conflicts.filter { choice($0.incoming.id) == .both }
+        let toSave = cls.added + replaced.map(\.incoming) + keptBoth.map(\.incoming)
         return List {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
@@ -184,6 +194,10 @@ struct ImportView: View {
                         .font(.title2.bold())
                     Text(reviewNarrative(outcome, recognised: recognised, dates: dates))
                         .foregroundStyle(.secondary)
+                    if !recognised.isEmpty {
+                        Text(importSummary(added: cls.added.count, unchanged: cls.unchanged.count, differs: cls.conflicts.count))
+                            .font(.subheadline.weight(.medium))
+                    }
                 }
                 .padding(.vertical, 4)
             }
@@ -195,35 +209,83 @@ struct ImportView: View {
                     }
                 }
             }
-            if !outcome.results.isEmpty {
-                Section(sourceName) {
-                    ForEach(outcome.results) { ReviewRow(result: $0) }
+            if !cls.conflicts.isEmpty {
+                Section {
+                    ForEach(cls.conflicts, id: \.incoming.id) { c in
+                        VStack(alignment: .leading, spacing: 8) {
+                            ReviewRow(result: c.incoming)
+                            Text("Saved: \(c.existing.displayValue) \(c.existing.unit)")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Picker("Keep", selection: Binding(
+                                get: { choice(c.incoming.id) },
+                                set: { choices[c.incoming.id] = $0 })) {
+                                Text("Keep saved").tag(ConflictChoice.keep)
+                                Text("Use report value").tag(ConflictChoice.replace)
+                                Text("Keep both").tag(ConflictChoice.both)
+                            }
+                            .pickerStyle(.menu)
+                        }
+                    }
+                } header: {
+                    Text("Differs from what's saved")
+                } footer: {
+                    Text("Same marker and date, but a different value. Saved values are kept unless you choose otherwise.")
+                }
+            }
+            if !cls.added.isEmpty {
+                Section("New - \(sourceName)") {
+                    ForEach(cls.added) { ReviewRow(result: $0) }
+                }
+            }
+            if !cls.unchanged.isEmpty {
+                Section {
+                    DisclosureGroup("\(cls.unchanged.count) already imported", isExpanded: $showUnchanged) {
+                        ForEach(cls.unchanged) { ReviewRow(result: $0) }
+                    }
+                }
+            }
+            if !unmatched.isEmpty {
+                Section("Not recognised") {
+                    ForEach(unmatched) { ReviewRow(result: $0) }
                 }
             }
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 8) {
                 Button {
-                    store.importResults(recognised)
+                    store.importResults(toSave, removing: replaced.map(\.existing.id))
+                    choices = [:]
                     dismiss()
                 } label: {
-                    Text(recognised.isEmpty ? "Nothing to Save" : "Save \(recognised.count) Results").frame(maxWidth: .infinity)
+                    Text(saveTitle(recognised: recognised.count, toSave: toSave.count)).frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.glassProminent)
                 .controlSize(.large)
-                .disabled(recognised.isEmpty)
+                .disabled(toSave.isEmpty)
                 HStack {
                     if sourceName == "Pasted text" {
                         Button("Edit Text") { stage = .paste }
                     }
                     Spacer()
-                    Button("Discard", role: .destructive) { stage = .idle }
+                    Button("Discard", role: .destructive) { choices = [:]; stage = .idle }
                 }
                 .font(.subheadline)
             }
             .padding()
             .background(.bar)
         }
+    }
+
+    private func importSummary(added: Int, unchanged: Int, differs: Int) -> String {
+        var parts = ["\(added) new", "\(unchanged) already imported"]
+        if differs > 0 { parts.append("\(differs) differ\(differs == 1 ? "s" : "") from what's saved") }
+        return parts.joined(separator: " · ")
+    }
+
+    private func saveTitle(recognised: Int, toSave: Int) -> String {
+        if recognised == 0 { return "Nothing to Save" }
+        if toSave == 0 { return "Nothing New to Save" }
+        return "Save \(toSave) Result\(toSave == 1 ? "" : "s")"
     }
 
     private func reviewNarrative(_ outcome: ParseOutcome, recognised: [MarkerResult], dates: [String]) -> String {

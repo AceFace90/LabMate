@@ -1,5 +1,6 @@
 import type { User } from 'firebase/auth'
 import { useEffect, useState } from 'react'
+import { MARKER_CATALOG } from '../data/markerCatalog'
 import type { Profile } from '../types'
 import { Icon, type IconName } from './Icon'
 
@@ -20,6 +21,10 @@ interface Props {
   onLogOut: () => void
   onDeleteAccount: () => void
 }
+
+const STANDARD_RANGE_MARKERS = MARKER_CATALOG.filter(
+  (m) => !m.manualOnly && (m.standardRangeLow != null || m.standardRangeHigh != null),
+)
 
 export function Settings({
   profile,
@@ -169,6 +174,27 @@ export function Settings({
               <span />
             </span>
           </label>
+          <label className="ios-row">
+            <span className="ios-row-label">Use lab ranges on charts and findings</span>
+            <span className="ios-switch">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={!!profile.useLabRanges}
+                disabled={migrating}
+                onChange={(e) => onSaveProfile({ ...profile, useLabRanges: e.target.checked })}
+              />
+              <span />
+            </span>
+          </label>
+          <p className="story-footnote">
+            Off: results are judged against LabMate's standard ranges, for select markers. All other markers always use the
+            range printed on your report.
+          </p>
+          <details className="story-footnote">
+            <summary style={{ cursor: 'pointer' }}>Which markers use a standard range?</summary>
+            <p style={{ margin: '6px 0 0' }}>{STANDARD_RANGE_MARKERS.map((m) => m.label).join(', ')}.</p>
+          </details>
         </div>
         <p className="ios-section-footer">
           Name is used for the greeting. Date of birth gives your age for the biological age comparison. Sex is only

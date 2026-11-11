@@ -213,6 +213,6 @@ export function clearCloudCache(): void {
 /** True if signed-out/local-only storage holds anything worth migrating. */
 export function hasLocalOnlyData(): boolean {
   const p = loadProfile()
-  const profileHasData = !!(p.name || p.birthDate || p.sex || p.takesCreatineSupplement || p.theme)
+  const profileHasData = !!(p.name || p.birthDate || p.sex || p.takesCreatineSupplement || p.useLabRanges || p.theme)
   return loadResults().length > 0 || loadCustomMarkers().length > 0 || profileHasData
 }

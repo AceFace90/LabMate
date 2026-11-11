@@ -15,20 +15,37 @@ export interface EffectiveRange {
   isStandard: boolean
 }
 
+// App-wide switch, set from the profile (see App.tsx) so every chart, finding and
+// status reads the same range without threading a flag through each component.
+let useLabRanges = false
+export function setUseLabRanges(on: boolean): void {
+  useLabRanges = on
+}
+
 /**
- * A result's own printed range always wins. Only when a result has no printed
- * range at all do we fall back to the marker's general standard range, so a
- * tested value doesn't sit stuck as "unknown" just because a report omitted
- * its reference interval.
+ * The range a result is judged against.
+ *
+ * By default the marker's built-in standard range wins, so a lab's population interval
+ * (e.g. a PSA "0.25-2.1") doesn't flag a good result as out of range. With "use lab
+ * ranges" on, the range printed on the report wins instead. Either way the other source
+ * is the fallback, so a marker with no built-in range still uses the lab's.
+ *
+ * One-sided markers (PSA, CRP, LDL: lower is better; HDL, eGFR: higher is better) drop
+ * the bound that doesn't matter, so they can never read "low" or "high" the wrong way.
  */
 export function effectiveRange(result: MarkerResult, marker?: MarkerDef): EffectiveRange {
-  if (result.rangeLow !== null || result.rangeHigh !== null) {
-    return { low: result.rangeLow, high: result.rangeHigh, isStandard: false }
-  }
-  if (marker && (marker.standardRangeLow != null || marker.standardRangeHigh != null)) {
-    return { low: marker.standardRangeLow ?? null, high: marker.standardRangeHigh ?? null, isStandard: true }
-  }
-  return { low: null, high: null, isStandard: false }
+  const hasLab = result.rangeLow !== null || result.rangeHigh !== null
+  const hasStandard = !!marker && (marker.standardRangeLow != null || marker.standardRangeHigh != null)
+  const preferLab = useLabRanges ? hasLab : !hasStandard && hasLab
+
+  let range: EffectiveRange
+  if (preferLab) range = { low: result.rangeLow, high: result.rangeHigh, isStandard: false }
+  else if (hasStandard) range = { low: marker!.standardRangeLow ?? null, high: marker!.standardRangeHigh ?? null, isStandard: true }
+  else range = { low: null, high: null, isStandard: false }
+
+  if (marker?.direction === 'lower_better') range = { ...range, low: null }
+  else if (marker?.direction === 'higher_better') range = { ...range, high: null }
+  return range
 }
 
 export function markerStatus(result: MarkerResult, marker?: MarkerDef): MarkerStatus {
@@ -118,4 +135,15 @@ export function overallCoverage(results: MarkerResult[], sex?: Profile['sex']): 
 export function lastUpdatedDate(results: MarkerResult[]): string | null {
   if (results.length === 0) return null
   return results.reduce((latest, r) => (r.date > latest ? r.date : latest), results[0].date)
+}
+
+/**
+ * Whether to show the lab's own "flagged" badge. For markers where only one side matters
+ * (PSA, CRP, LDL... lower is better; HDL, eGFR... higher is better) the lab flags the
+ * harmless side too, so the badge follows our directional status instead.
+ */
+export function showLabFlag(result: MarkerResult, marker: MarkerDef | undefined): boolean {
+  if (!result.flag) return false
+  if (marker?.direction) return markerStatus(result, marker) !== 'in_range'
+  return true
 }

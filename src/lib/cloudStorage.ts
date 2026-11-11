@@ -50,6 +50,7 @@ export function subscribeProfile(uid: string, callback: (profile: Profile) => vo
       birthDate: data?.birthDate ?? null,
       sex: data?.sex ?? null,
       takesCreatineSupplement: data?.takesCreatineSupplement,
+      useLabRanges: data?.useLabRanges,
       theme: data?.theme,
     })
   })
@@ -142,6 +143,7 @@ export async function deleteAllCloudData(uid: string): Promise<void> {
       birthDate: null,
       sex: null,
       takesCreatineSupplement: deleteField(),
+      useLabRanges: deleteField(),
       theme: deleteField(),
       updatedAt: serverTimestamp(),
     },

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatIsoDate } from '../lib/dates'
-import { effectiveRange } from '../lib/healthScore'
+import { effectiveRange, showLabFlag } from '../lib/healthScore'
 import type { MarkerDef, MarkerResult } from '../types'
 
 interface Props {
@@ -78,7 +78,7 @@ export function TrendChart({ results, unit, marker, color = 'var(--series-1)' }:
         <div>
           <span className="latest-value">{shown.displayValue}</span>
           <span className="latest-unit"> {unit}</span>
-          {shown.flag && <span className="badge" style={{ marginLeft: 8 }}>Flagged</span>}
+          {showLabFlag(shown, marker) && <span className="badge" style={{ marginLeft: 8 }}>Flagged</span>}
         </div>
         <div className="latest-date">{formatIsoDate(shown.date)}</div>
       </div>
@@ -131,8 +131,8 @@ export function TrendChart({ results, unit, marker, color = 'var(--series-1)' }:
             cx={c.x}
             cy={c.y}
             r={i === coords.length - 1 ? 7 : 4}
-            fill={c.point.flag ? 'var(--status-serious)' : color}
-            fillOpacity={c.point.flag || i === coords.length - 1 ? 1 : 0.55}
+            fill={showLabFlag(c.point, marker) ? 'var(--status-serious)' : color}
+            fillOpacity={showLabFlag(c.point, marker) || i === coords.length - 1 ? 1 : 0.55}
           />
         ))}
 

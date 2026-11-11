@@ -30,6 +30,12 @@ export interface MarkerDef {
   /** Lowercase names/synonyms this marker may appear as in a report. First match wins. */
   aliases: string[]
   description: string
+  /**
+   * Which way is better, for markers where only one end of a range matters. A
+   * 'lower_better' marker (PSA, CRP, LDL...) is never flagged low, and a 'higher_better'
+   * one (HDL, eGFR) is never flagged high, whatever range the lab prints. Unset = both ends count.
+   */
+  direction?: 'lower_better' | 'higher_better'
   /** Phase-2 markers with no PDF source - logged by hand only. */
   manualOnly?: boolean
   /** Only relevant to one sex (e.g. PSA, CA-125) - hidden from users of the other sex. Shown to everyone when profile sex is unset. */
@@ -80,6 +86,12 @@ export interface Profile {
    * breakdown stops presenting creatinine as something to act on.
    */
   takesCreatineSupplement?: boolean
+  /**
+   * Use the range printed on each lab report for charts, findings and status instead of
+   * the app's built-in standard range. Off by default. Markers with no built-in range
+   * always use the lab's.
+   */
+  useLabRanges?: boolean
   /** Display theme. 'auto' follows the OS/browser preference; defaults to 'auto' when unset. */
   theme?: 'light' | 'dark' | 'auto'
 }

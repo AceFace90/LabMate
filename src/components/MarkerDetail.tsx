@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { findCustomMarker, getMarker } from '../data/markerCatalog'
 import { formatIsoDate } from '../lib/dates'
-import { effectiveRange, markerStatus } from '../lib/healthScore'
+import { effectiveRange, markerStatus, showLabFlag } from '../lib/healthScore'
 import type { CustomMarker, MarkerResult } from '../types'
 import { CATEGORY_STYLE, categoryColor } from '../data/categoryStyle'
 import { formatNumber, makeMarkerStory, rangeCaption } from '../lib/markerStory'
@@ -222,7 +222,7 @@ export function MarkerDetail({
                       <td>
                         <span className={`status-dot ${status}${range.isStandard ? ' is-standard' : ''}`} />
                         {r.displayValue} {r.unit}
-                        {r.flag && <span className="badge">flagged</span>}
+                        {showLabFlag(r, marker) && <span className="badge">flagged</span>}
                       </td>
                       <td>
                         {r.rangeText || (range.isStandard ? (

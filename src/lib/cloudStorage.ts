@@ -32,7 +32,13 @@ function userDoc(uid: string) {
 
 export function subscribeResults(uid: string, callback: (results: MarkerResult[]) => void) {
   return onSnapshot(resultsCol(uid), (snap) => {
-    callback(snap.docs.map((d) => d.data() as MarkerResult))
+    callback(
+      snap.docs.map((d) => {
+        // iOS omits nil fields, so a missing range comes back undefined rather than null.
+        const r = d.data() as MarkerResult
+        return { ...r, rangeLow: r.rangeLow ?? null, rangeHigh: r.rangeHigh ?? null, rangeText: r.rangeText ?? '', flag: r.flag ?? '' }
+      }),
+    )
   })
 }
 

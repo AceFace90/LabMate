@@ -34,12 +34,12 @@ export function setUseLabRanges(on: boolean): void {
  * the bound that doesn't matter, so they can never read "low" or "high" the wrong way.
  */
 export function effectiveRange(result: MarkerResult, marker?: MarkerDef): EffectiveRange {
-  const hasLab = result.rangeLow !== null || result.rangeHigh !== null
+  const hasLab = result.rangeLow != null || result.rangeHigh != null
   const hasStandard = !!marker && (marker.standardRangeLow != null || marker.standardRangeHigh != null)
   const preferLab = useLabRanges ? hasLab : !hasStandard && hasLab
 
   let range: EffectiveRange
-  if (preferLab) range = { low: result.rangeLow, high: result.rangeHigh, isStandard: false }
+  if (preferLab) range = { low: result.rangeLow ?? null, high: result.rangeHigh ?? null, isStandard: false }
   else if (hasStandard) range = { low: marker!.standardRangeLow ?? null, high: marker!.standardRangeHigh ?? null, isStandard: true }
   else range = { low: null, high: null, isStandard: false }
 

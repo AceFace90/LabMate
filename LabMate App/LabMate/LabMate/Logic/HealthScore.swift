@@ -53,12 +53,31 @@ nonisolated enum HealthScore {
     nonisolated(unsafe) static var rangeBirthDate: String? = nil
     nonisolated(unsafe) static var rangeSex: Sex? = nil
 
-    /// VO2 max 10th percentile by age band (20-29 ... 80-89), treadmill CPET, mL/kg/min.
-    /// Kaminsky LA et al. (2022), Mayo Clin Proc 97(2):285-293. Below it reads as low.
-    private static let vo2P10: [Sex: [Double]] = [
-        .M: [28.6, 24.9, 22.1, 18.6, 15.8, 13.6, 12.9],
-        .F: [22.5, 18.6, 17.2, 16.5, 13.4, 12.3, 11.4],
+    /// VO2 max reference standards, mL/kg/min, by age band (20-29 ... 70-79) and sex. Supplied by the user.
+    /// Rows: Superior (95th), Excellent (80th), Good (60th), Fair (40th). Below Fair is rated Poor, and the
+    /// Fair value is the lower bound of the range. Keep in sync with VO2_STANDARDS in src/lib/vo2Norms.ts.
+    private static let vo2Fair: [Sex: [Double]] = [
+        .M: [41.7, 40.5, 38.5, 35.6, 32.3, 29.4],
+        .F: [36.1, 34.4, 33.0, 30.1, 27.5, 25.9],
     ]
+    private static let vo2Good: [Sex: [Double]] = [
+        .M: [45.4, 44.0, 42.4, 39.2, 35.5, 32.3],
+        .F: [39.5, 37.8, 36.3, 33.0, 30.0, 28.1],
+    ]
+    private static let vo2Excellent: [Sex: [Double]] = [
+        .M: [51.1, 48.3, 46.4, 43.4, 39.5, 36.7],
+        .F: [43.9, 42.4, 39.7, 36.7, 33.0, 30.9],
+    ]
+    private static let vo2Superior: [Sex: [Double]] = [
+        .M: [55.4, 54.0, 52.5, 48.9, 45.7, 42.1],
+        .F: [49.6, 47.4, 45.3, 41.1, 37.8, 36.7],
+    ]
+
+    /// Body fat % in-range zone by sex (American Council on Exercise: Athletes through Acceptable;
+    /// below is essential fat, above is obese). Keep in sync with bodyFatBounds in src/lib/vo2Norms.ts.
+    private static func bodyFatBounds(_ sex: Sex) -> (low: Double, high: Double) {
+        sex == .F ? (14, 31) : (6, 25)
+    }
 
     /**
      * The range a result is judged against. By default the marker's built-in standard range wins,
@@ -71,9 +90,13 @@ nonisolated enum HealthScore {
         let hasLab = result.rangeLow != nil || result.rangeHigh != nil
         let hasStandard = marker.map { $0.standardRangeLow != nil || $0.standardRangeHigh != nil } ?? false
         if marker?.key == "vo2_max", let birth = rangeBirthDate, let sex = rangeSex, !(useLabRanges && hasLab),
-           let table = vo2P10[sex] {
-            let band = min(6, max(0, DateUtils.ageInYears(birth, result.date) / 10 - 2))
+           let table = vo2Fair[sex] {
+            let band = min(5, max(0, DateUtils.ageInYears(birth, result.date) / 10 - 2))
             return EffectiveRange(low: table[band], high: nil, isStandard: true)
+        }
+        if marker?.key == "body_fat_percent", let sex = rangeSex, !(useLabRanges && hasLab) {
+            let b = bodyFatBounds(sex)
+            return EffectiveRange(low: b.low, high: b.high, isStandard: true)
         }
         let preferLab = useLabRanges ? hasLab : (!hasStandard && hasLab)
         var range: EffectiveRange

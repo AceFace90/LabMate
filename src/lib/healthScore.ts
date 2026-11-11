@@ -1,6 +1,6 @@
 import { CATEGORIES, MARKER_CATALOG } from '../data/markerCatalog'
 import { ageInYears } from './dates'
-import { vo2LowBound } from './vo2Norms'
+import { bodyFatBounds, vo2LowBound } from './vo2Norms'
 import type { MarkerCategory, MarkerDef, MarkerResult, Profile } from '../types'
 
 /** True when a marker is relevant to the given sex - sex-specific markers (PSA, CA-125) are excluded for the other sex. Unset sex shows everything. */
@@ -49,6 +49,10 @@ export function effectiveRange(result: MarkerResult, marker?: MarkerDef): Effect
   if (marker?.key === 'vo2_max' && rangeProfile.birthDate && rangeProfile.sex && !(useLabRanges && hasLab)) {
     const age = ageInYears(rangeProfile.birthDate, result.date)
     return { low: vo2LowBound(age, rangeProfile.sex), high: null, isStandard: true }
+  }
+
+  if (marker?.key === 'body_fat_percent' && rangeProfile.sex && !(useLabRanges && hasLab)) {
+    return { ...bodyFatBounds(rangeProfile.sex), isStandard: true }
   }
 
   let range: EffectiveRange

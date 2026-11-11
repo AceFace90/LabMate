@@ -1034,6 +1034,10 @@ nav.tabs button.active { color: var(--accent); }
   min-height: 52px; padding: 10px 20px; font-size: 17px; color: var(--text-primary);
   width: 100%; background: none; border: none; text-align: left; font-family: inherit;
 }
+.ios-row-note { padding: 0 20px 14px; font-size: 13px; line-height: 1.4; color: var(--text-secondary); }
+.ios-row-note p { margin: 0; }
+.ios-row-note details { margin-top: 8px; }
+.ios-row-note summary { cursor: pointer; }
 .ios-row + .ios-row::before {
   content: ''; position: absolute; top: 0; left: 20px; right: 0;
   height: 0.5px; background: var(--gridline);

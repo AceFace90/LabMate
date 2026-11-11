@@ -194,7 +194,7 @@ export const MARKER_CATALOG: MarkerDef[] = [
   { key: 'ttg_iga', label: 'Coeliac Antibodies (tTG-IgA)', category: 'autoimmunity', defaultUnit: 'U/mL', aliases: ['ttg-iga', 'ttg iga', 'tissue transglutaminase iga', 'coeliac antibodies'], description: 'Screening antibody for coeliac disease. No standard range shown - cutoff varies a lot by lab/assay, use the range on your report.' },
 
   // Cancer screening (tumour markers - screening/monitoring only, not diagnostic alone)
-  { key: 'psa', direction: 'lower_better', label: 'PSA', category: 'cancer_screening', defaultUnit: 'ug/L', aliases: ['psa', 'prostate specific antigen'], description: 'Prostate screening marker. No standard range shown - the "normal" cutoff shifts with age, use the range on your report.', sexSpecific: 'M' },
+  { key: 'psa', direction: 'lower_better', label: 'PSA', category: 'cancer_screening', defaultUnit: 'ug/L', aliases: ['psa', 'prostate specific antigen'], description: 'Prostate screening marker. Lower is better - the upper limit shown comes from your report, since the usual cutoff shifts with age.', sexSpecific: 'M' },
   { key: 'ca125', direction: 'lower_better', label: 'CA-125', category: 'cancer_screening', defaultUnit: 'U/mL', aliases: ['ca-125', 'ca 125'], description: 'Ovarian screening/monitoring marker - also rises with plenty of benign causes (e.g. endometriosis, menstruation, fibroids). No standard range shown - use the range on your report.', sexSpecific: 'F' },
 
   // Muscle

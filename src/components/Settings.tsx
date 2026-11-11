@@ -187,14 +187,16 @@ export function Settings({
               <span />
             </span>
           </label>
-          <p className="story-footnote">
+          <div className="ios-row-note">
+          <p>
             Off: results are judged against LabMate's standard ranges, for select markers. All other markers always use the
             range printed on your report.
           </p>
-          <details className="story-footnote">
+          <details>
             <summary style={{ cursor: 'pointer' }}>Which markers use a standard range?</summary>
             <p style={{ margin: '6px 0 0' }}>{STANDARD_RANGE_MARKERS.map((m) => m.label).join(', ')}.</p>
           </details>
+          </div>
         </div>
         <p className="ios-section-footer">
           Name is used for the greeting. Date of birth gives your age for the biological age comparison. Sex is only

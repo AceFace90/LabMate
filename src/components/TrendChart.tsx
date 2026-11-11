@@ -63,8 +63,12 @@ export function TrendChart({ results, unit, marker, color = 'var(--series-1)' }:
   const coords = points.map((p, i) => ({ x: xFor(times[i]), y: yFor(p.value as number), point: p }))
   const path = smoothPath(coords)
 
-  const bandTop = rangeHigh !== null ? yFor(rangeHigh) : null
-  const bandBottom = rangeLow !== null ? yFor(rangeLow) : null
+  // One-sided ranges (PSA < 2.1, eGFR > 60) shade from the limit to the edge of the plot.
+  const hasBand = rangeLow !== null || rangeHigh !== null
+  const plotTop = PAD_TOP
+  const plotBottom = HEIGHT - PAD_BOTTOM
+  const bandTop = hasBand ? (rangeHigh !== null ? Math.max(plotTop, yFor(rangeHigh)) : plotTop) : null
+  const bandBottom = hasBand ? (rangeLow !== null ? Math.min(plotBottom, yFor(rangeLow)) : plotBottom) : null
 
   const yTicks = [0, 1, 2, 3].map((i) => yMin + ((yMax - yMin) * (i + 0.5)) / 4)
 
@@ -141,7 +145,7 @@ export function TrendChart({ results, unit, marker, color = 'var(--series-1)' }:
         )}
 
         {(tSpan === 1 ? [tMin] : [tMin, (tMin + tMax) / 2, tMax]).map((t, i) => (
-          <text key={i} x={xFor(t)} y={HEIGHT - 8} fontSize={11} fill="var(--text-muted)" textAnchor={i === 0 && tSpan !== 1 ? 'start' : i === 2 ? 'end' : 'middle'}>
+          <text key={i} x={xFor(t)} y={HEIGHT - 8} fontSize={11} fill="var(--text-muted)" textAnchor={tSpan === 1 || (i === 0 && tSpan !== 1) ? 'start' : i === 2 ? 'end' : 'middle'}>
             {new Date(t).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}
           </text>
         ))}

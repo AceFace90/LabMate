@@ -1,5 +1,6 @@
 import { findMarkerByAlias } from '../data/markerCatalog'
 import { ausDateToIso } from './dates'
+import { anchoredParse } from './anchoredParser'
 import { groupItemsIntoLines, type Line } from './textLines'
 import type { MarkerResult } from '../types'
 
@@ -608,6 +609,13 @@ export function runStateMachine(fileName: string, lines: Line[], defaultDate?: s
   flushLongTable()
   flushColumnTable()
   flushHistoryTable()
+
+  // None of the layout-specific parsers recognised anything: fall back to finding known
+  // marker names and reading their values from around them, in any layout.
+  if (results.length === 0) {
+    const anchored = anchoredParse(fileName, lines, defaultDate)
+    if (anchored.results.length > 0) return anchored
+  }
 
   if (datelessRows > 0) {
     warnings.push(

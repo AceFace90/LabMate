@@ -74,7 +74,7 @@ struct MarkerTrendChart: View {
                 let isLatest = p.id == latest.id
                 PointMark(x: .value("Date", p.date), y: .value("Value", p.value))
                     .symbolSize(isLatest ? 150 : 60)
-                    .foregroundStyle(p.result.flag != .none ? HealthColor.serious : (isLatest ? color : color.opacity(0.55)))
+                    .foregroundStyle(HealthScore.showLabFlag(p.result, marker) ? HealthColor.serious : (isLatest ? color : color.opacity(0.55)))
                     .accessibilityLabel(DateUtils.formatIsoDate(p.result.date))
                     .accessibilityValue("\(p.result.displayValue) \(unit)")
             }
@@ -108,7 +108,7 @@ struct MarkerTrendChart: View {
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .contentTransition(.numericText())
                 Text(unit).font(.title3.weight(.semibold)).foregroundStyle(.secondary)
-                if p.result.flag != .none { MarkerBadge(text: "Flagged", color: HealthColor.serious) }
+                if HealthScore.showLabFlag(p.result, marker) { MarkerBadge(text: "Flagged", color: HealthColor.serious) }
             }
             Text(DateUtils.formatIsoDate(p.result.date)).font(.subheadline).foregroundStyle(.secondary)
         }

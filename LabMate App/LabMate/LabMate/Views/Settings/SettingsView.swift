@@ -20,6 +20,7 @@ struct SettingsView: View {
                 accountSection
                 aboutYouSection
                 appearanceSection
+                rangesSection
                 healthSection
                 dataSection
                 aboutSection
@@ -168,6 +169,31 @@ struct SettingsView: View {
         } footer: {
             Text("Name is used for the greeting. Date of birth gives your age for the biological age comparison. Sex is only used for kidney-function equations (eGFR / Cystatin C), which differ by sex. Creatine raises serum creatinine independent of kidney function: when set, the biological age breakdown stops treating creatinine as something to act on, and (if you have a Cystatin C result) shows a creatine-adjusted estimate alongside the real one.")
         }
+    }
+
+    private var rangesSection: some View {
+        Section {
+            Toggle("Use lab ranges on charts and findings", isOn: Binding(
+                get: { profile.useLabRanges ?? false },
+                set: { v in update { $0.useLabRanges = v } }))
+                .disabled(locked)
+            DisclosureGroup("Which markers use a standard range?") {
+                Text(standardRangeMarkers)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Reference Ranges")
+        } footer: {
+            Text("Off: results are judged against LabMate's standard ranges, for select markers. All other markers always use the range printed on your report.")
+        }
+    }
+
+    private var standardRangeMarkers: String {
+        MarkerCatalog.all
+            .filter { !$0.manualOnly && ($0.standardRangeLow != nil || $0.standardRangeHigh != nil) }
+            .map(\.label)
+            .joined(separator: ", ") + "."
     }
 
     private var appearanceSection: some View {

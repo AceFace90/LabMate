@@ -25,7 +25,7 @@ enum InsightsPreviewData {
     ]
 
     static let profile = Profile(name: "Alex Sample", birthDate: "1988-04-12", sex: .M,
-                                 takesCreatineSupplement: nil, theme: nil)
+                                 takesCreatineSupplement: nil, theme: nil, useLabRanges: nil)
 
     static var model: InsightsModel { InsightsModel(results: results, profile: profile, nameFallback: nil) }
 

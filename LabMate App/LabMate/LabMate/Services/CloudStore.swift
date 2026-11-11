@@ -62,7 +62,8 @@ nonisolated struct CloudStore: Sendable {
                 birthDate: d["birthDate"] as? String,
                 sex: (d["sex"] as? String).flatMap(Sex.init(rawValue:)),
                 takesCreatineSupplement: d["takesCreatineSupplement"] as? Bool,
-                theme: (d["theme"] as? String).flatMap(ThemePreference.init(rawValue:)))
+                theme: (d["theme"] as? String).flatMap(ThemePreference.init(rawValue:)),
+                useLabRanges: d["useLabRanges"] as? Bool)
             Task { @MainActor in cb(profile) }
         }
         return { reg.remove() }
@@ -142,6 +143,7 @@ nonisolated struct CloudStore: Sendable {
         if let v = p.sex { d["sex"] = v.rawValue }
         if let v = p.takesCreatineSupplement { d["takesCreatineSupplement"] = v }
         if let v = p.theme { d["theme"] = v.rawValue }
+        if let v = p.useLabRanges { d["useLabRanges"] = v }
         return d
     }
 
@@ -196,6 +198,7 @@ nonisolated struct CloudStore: Sendable {
             "sex": NSNull(),
             "takesCreatineSupplement": FieldValue.delete(),
             "theme": FieldValue.delete(),
+            "useLabRanges": FieldValue.delete(),
             "updatedAt": FieldValue.serverTimestamp(),
         ], forDocument: userDoc(uid), merge: true)
         try await batch.commit()

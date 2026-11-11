@@ -13,7 +13,9 @@ import FirebaseAuth
 final class AppStore {
     // MARK: State
     private(set) var results: [MarkerResult]
-    private(set) var profile: Profile
+    private(set) var profile: Profile {
+        didSet { Self.applyRangeSettings(profile) }
+    }
     private(set) var customMarkers: [CustomMarker]
     private(set) var cloudReady = false
     private(set) var migrating = false
@@ -57,6 +59,14 @@ final class AppStore {
         }
         dismissedSplash = local.hasOnboarded || LocalStore.lastUid != nil
         healthEnabled = UserDefaults.standard.bool(forKey: "labmate:healthEnabled:v1")
+        Self.applyRangeSettings(profile)
+    }
+
+    /// Pushes the profile's range preferences (and age/sex for VO2 max norms) to HealthScore.
+    private static func applyRangeSettings(_ p: Profile) {
+        HealthScore.useLabRanges = p.useLabRanges ?? false
+        HealthScore.rangeBirthDate = p.birthDate
+        HealthScore.rangeSex = p.sex
     }
 
     // MARK: Derived

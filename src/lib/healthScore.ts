@@ -1,4 +1,6 @@
 import { CATEGORIES, MARKER_CATALOG } from '../data/markerCatalog'
+import { ageInYears } from './dates'
+import { vo2LowBound } from './vo2Norms'
 import type { MarkerCategory, MarkerDef, MarkerResult, Profile } from '../types'
 
 /** True when a marker is relevant to the given sex - sex-specific markers (PSA, CA-125) are excluded for the other sex. Unset sex shows everything. */
@@ -22,6 +24,12 @@ export function setUseLabRanges(on: boolean): void {
   useLabRanges = on
 }
 
+// Age and sex, for markers whose normal range depends on them (VO2 max).
+let rangeProfile: { birthDate: string | null; sex: 'M' | 'F' | null } = { birthDate: null, sex: null }
+export function setRangeProfile(p: { birthDate: string | null; sex: 'M' | 'F' | null }): void {
+  rangeProfile = p
+}
+
 /**
  * The range a result is judged against.
  *
@@ -37,6 +45,11 @@ export function effectiveRange(result: MarkerResult, marker?: MarkerDef): Effect
   const hasLab = result.rangeLow != null || result.rangeHigh != null
   const hasStandard = !!marker && (marker.standardRangeLow != null || marker.standardRangeHigh != null)
   const preferLab = useLabRanges ? hasLab : !hasStandard && hasLab
+
+  if (marker?.key === 'vo2_max' && rangeProfile.birthDate && rangeProfile.sex && !(useLabRanges && hasLab)) {
+    const age = ageInYears(rangeProfile.birthDate, result.date)
+    return { low: vo2LowBound(age, rangeProfile.sex), high: null, isStandard: true }
+  }
 
   let range: EffectiveRange
   if (preferLab) range = { low: result.rangeLow ?? null, high: result.rangeHigh ?? null, isStandard: false }

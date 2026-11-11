@@ -7,7 +7,7 @@ import { Settings } from './components/Settings'
 import { Splash } from './components/Splash'
 import { TestPlan } from './components/TestPlan'
 import { UploadFlow } from './components/UploadFlow'
-import { setUseLabRanges } from './lib/healthScore'
+import { setRangeProfile, setUseLabRanges } from './lib/healthScore'
 import {
   deleteAccountCloud,
   deleteAllCloudData,
@@ -205,6 +205,7 @@ export default function App() {
   // derived fresh from the stored data on every change, rather than persisted, so they
   // can never go stale after a source value is edited or deleted.
   setUseLabRanges(!!profile.useLabRanges)
+  setRangeProfile({ birthDate: profile.birthDate, sex: profile.sex })
   const displayResults = useMemo(() => [...results, ...deriveComputedMarkers(results)], [results])
 
   function handleImport(newResults: MarkerResult[], removeIds: string[] = []) {

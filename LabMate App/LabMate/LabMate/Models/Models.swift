@@ -34,7 +34,11 @@ nonisolated struct MarkerDef: Identifiable, Sendable {
     var standardRangeLow: Double? = nil
     var standardRangeHigh: Double? = nil
     var standardRangeText: String? = nil
+    /// Which way is better, for markers where only one end of a range matters. Nil = both ends count.
+    var direction: Direction? = nil
     var id: String { key }
+
+    enum Direction: Sendable { case lowerBetter, higherBetter }
 }
 
 nonisolated enum ResultFlag: String, Codable, Sendable {
@@ -72,8 +76,10 @@ nonisolated struct Profile: Codable, Equatable, Sendable {
     /// Creatine raises serum creatinine independent of kidney function.
     var takesCreatineSupplement: Bool?
     var theme: ThemePreference?
+    /// Judge results against the range printed on each report instead of LabMate's standard range.
+    var useLabRanges: Bool?
 
-    static let empty = Profile(name: nil, birthDate: nil, sex: nil, takesCreatineSupplement: nil, theme: nil)
+    static let empty = Profile(name: nil, birthDate: nil, sex: nil, takesCreatineSupplement: nil, theme: nil, useLabRanges: nil)
 }
 
 /// A user-defined metric outside the built-in catalog.

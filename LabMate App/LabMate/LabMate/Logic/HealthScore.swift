@@ -48,20 +48,53 @@ nonisolated enum HealthScore {
         marker.sexSpecific == nil || sex == nil || marker.sexSpecific == sex
     }
 
+    /// App-wide switches set from the profile (see AppStore), so every chart, finding and status reads the same range.
+    nonisolated(unsafe) static var useLabRanges = false
+    nonisolated(unsafe) static var rangeBirthDate: String? = nil
+    nonisolated(unsafe) static var rangeSex: Sex? = nil
+
+    /// VO2 max 10th percentile by age band (20-29 ... 80-89), treadmill CPET, mL/kg/min.
+    /// Kaminsky LA et al. (2022), Mayo Clin Proc 97(2):285-293. Below it reads as low.
+    private static let vo2P10: [Sex: [Double]] = [
+        .M: [28.6, 24.9, 22.1, 18.6, 15.8, 13.6, 12.9],
+        .F: [22.5, 18.6, 17.2, 16.5, 13.4, 12.3, 11.4],
+    ]
+
     /**
-     * A result's own printed range always wins. Only when a result has no printed
-     * range at all do we fall back to the marker's general standard range, so a
-     * tested value doesn't sit stuck as "unknown" just because a report omitted
-     * its reference interval.
+     * The range a result is judged against. By default the marker's built-in standard range wins,
+     * so a lab's population interval (e.g. a PSA "0.25-2.1") doesn't flag a good result. With "use lab
+     * ranges" on, the printed range wins instead. Either way the other is the fallback.
+     * One-sided markers (PSA, CRP, LDL lower is better; HDL, eGFR higher is better) drop the bound
+     * that doesn't matter, so they can never read low or high the wrong way.
      */
     static func effectiveRange(_ result: MarkerResult, _ marker: MarkerDef? = nil) -> EffectiveRange {
-        if result.rangeLow != nil || result.rangeHigh != nil {
-            return EffectiveRange(low: result.rangeLow, high: result.rangeHigh, isStandard: false)
+        let hasLab = result.rangeLow != nil || result.rangeHigh != nil
+        let hasStandard = marker.map { $0.standardRangeLow != nil || $0.standardRangeHigh != nil } ?? false
+        if marker?.key == "vo2_max", let birth = rangeBirthDate, let sex = rangeSex, !(useLabRanges && hasLab),
+           let table = vo2P10[sex] {
+            let band = min(6, max(0, DateUtils.ageInYears(birth, result.date) / 10 - 2))
+            return EffectiveRange(low: table[band], high: nil, isStandard: true)
         }
-        if let marker, marker.standardRangeLow != nil || marker.standardRangeHigh != nil {
-            return EffectiveRange(low: marker.standardRangeLow, high: marker.standardRangeHigh, isStandard: true)
+        let preferLab = useLabRanges ? hasLab : (!hasStandard && hasLab)
+        var range: EffectiveRange
+        if preferLab {
+            range = EffectiveRange(low: result.rangeLow, high: result.rangeHigh, isStandard: false)
+        } else if hasStandard, let marker {
+            range = EffectiveRange(low: marker.standardRangeLow, high: marker.standardRangeHigh, isStandard: true)
+        } else {
+            range = EffectiveRange(low: nil, high: nil, isStandard: false)
         }
-        return EffectiveRange(low: nil, high: nil, isStandard: false)
+        if marker?.direction == .lowerBetter { range.low = nil }
+        else if marker?.direction == .higherBetter { range.high = nil }
+        return range
+    }
+
+    /// Whether to show the lab's own flag. One-sided markers follow our directional status instead,
+    /// since labs flag the harmless side too.
+    static func showLabFlag(_ result: MarkerResult, _ marker: MarkerDef?) -> Bool {
+        if result.flag == .none { return false }
+        if marker?.direction != nil { return markerStatus(result, marker) != .in_range }
+        return true
     }
 
     static func markerStatus(_ result: MarkerResult, _ marker: MarkerDef? = nil) -> MarkerStatus {

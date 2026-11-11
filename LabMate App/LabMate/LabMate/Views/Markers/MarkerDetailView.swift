@@ -202,7 +202,7 @@ private struct HistoryRow: View {
                 HStack(spacing: 8) {
                     StatusDot(status: status, isStandard: range.isStandard)
                     Text("\(result.displayValue) \(result.unit.isEmpty ? unit : result.unit)").font(.headline)
-                    if result.flag != .none { MarkerBadge(text: "Flagged", color: HealthColor.serious) }
+                    if HealthScore.showLabFlag(result, marker) { MarkerBadge(text: "Flagged", color: HealthColor.serious) }
                     if result.derived == true { MarkerBadge(text: "Calculated", color: HealthColor.vitals) }
                     Spacer()
                     Text(DateUtils.formatIsoDate(result.date)).font(.subheadline).foregroundStyle(.secondary)
@@ -223,7 +223,7 @@ private struct HistoryRow: View {
         .buttonStyle(.plain)
         .disabled(onEdit == nil)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(DateUtils.formatIsoDate(result.date)), \(result.displayValue) \(unit), \(status.title)\(result.flag != .none ? ", flagged" : ""), source \(source)")
+        .accessibilityLabel("\(DateUtils.formatIsoDate(result.date)), \(result.displayValue) \(unit), \(status.title)\(HealthScore.showLabFlag(result, marker) ? ", flagged" : ""), source \(source)")
         .accessibilityHint(onEdit != nil ? "Opens editor" : "")
         .contextMenu {
             if let onEdit { Button("Edit", systemImage: "pencil", action: onEdit) }

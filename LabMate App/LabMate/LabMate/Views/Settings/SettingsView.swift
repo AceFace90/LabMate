@@ -185,7 +185,7 @@ struct SettingsView: View {
         } header: {
             Text("Reference Ranges")
         } footer: {
-            Text("Off: results are judged against LabMate's standard ranges, for select markers. All other markers always use the range printed on your report.")
+            Text("Off: results are judged against LabMate's standard ranges, for select markers. On: the range printed on each report is used instead, where there is one. Markers with no standard range always use the report's, and one-sided markers like PSA and LDL ignore a lab's \"too low\" limit either way.")
         }
     }
 

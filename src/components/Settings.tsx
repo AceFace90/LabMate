@@ -189,8 +189,9 @@ export function Settings({
           </label>
           <div className="ios-row-note">
           <p>
-            Off: results are judged against LabMate's standard ranges, for select markers. All other markers always use the
-            range printed on your report.
+            Off: results are judged against LabMate's standard ranges, for select markers. On: the range printed on each
+            report is used instead, where there is one. Markers with no standard range always use the report's, and
+            one-sided markers like PSA and LDL ignore a lab's "too low" limit either way.
           </p>
           <details>
             <summary style={{ cursor: 'pointer' }}>Which markers use a standard range?</summary>

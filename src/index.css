@@ -1070,7 +1070,7 @@ button.ios-row:disabled { opacity: 0.4; cursor: default; }
   background: #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.16);
   transition: transform 0.2s;
 }
-.ios-switch input:checked + span { background: var(--status-good); }
+.ios-switch input:checked + span { background: var(--accent); }
 .ios-switch input:checked + span::after { transform: translateX(20px); }
 .ios-switch input:disabled + span { opacity: 0.5; }
 

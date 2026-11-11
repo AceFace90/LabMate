@@ -35,21 +35,56 @@ export function saveResults(results: MarkerResult[]): void {
   localStorage.setItem(RESULTS_KEY, JSON.stringify(results))
 }
 
-/** Adds new results, skipping exact duplicates (same marker+date+value+source). */
+const hasOperator = (r: MarkerResult) => /[<>]/.test(r.displayValue)
+
+/** Same measurement: identical printed value, or the same number ("5.3" vs "5.30"). */
+export function sameValue(a: MarkerResult, b: MarkerResult): boolean {
+  if (a.displayValue.trim() === b.displayValue.trim()) return true
+  if (a.value === null || b.value === null || hasOperator(a) || hasOperator(b)) return false
+  return Math.abs(a.value - b.value) < 1e-6
+}
+
+const slot = (r: MarkerResult) => `${r.markerKey}|${r.date}`
+
+export interface ImportConflict {
+  incoming: MarkerResult
+  existing: MarkerResult
+}
+
+export interface ImportClassification {
+  /** Nothing stored for this marker on this date. */
+  added: MarkerResult[]
+  /** Already stored with the same value - nothing to do. */
+  unchanged: MarkerResult[]
+  /** Same marker and date already stored, but with a different value. */
+  conflicts: ImportConflict[]
+}
+
+/** Sorts incoming results into new, already-imported, and differs-from-what's-stored. */
+export function classifyImport(existing: MarkerResult[], incoming: MarkerResult[]): ImportClassification {
+  const bySlot = new Map<string, MarkerResult[]>()
+  for (const r of existing) bySlot.set(slot(r), [...(bySlot.get(slot(r)) ?? []), r])
+  const out: ImportClassification = { added: [], unchanged: [], conflicts: [] }
+  for (const r of incoming) {
+    const stored = bySlot.get(slot(r)) ?? []
+    if (stored.some((e) => sameValue(e, r))) out.unchanged.push(r)
+    else if (stored.length > 0) out.conflicts.push({ incoming: r, existing: stored[0] })
+    else {
+      out.added.push(r)
+      bySlot.set(slot(r), [r]) // a repeat of the same row within one report is "unchanged"
+    }
+  }
+  return out
+}
+
+/** Adds new results, skipping ones already stored with the same marker, date and value. */
 export function mergeResults(existing: MarkerResult[], incoming: MarkerResult[]): MarkerResult[] {
-  const seen = new Set(existing.map((r) => fingerprint(r)))
   const merged = [...existing]
   for (const r of incoming) {
-    const fp = fingerprint(r)
-    if (seen.has(fp)) continue
-    seen.add(fp)
+    if (merged.some((e) => slot(e) === slot(r) && sameValue(e, r))) continue
     merged.push(r)
   }
   return merged
-}
-
-function fingerprint(r: MarkerResult): string {
-  return `${r.markerKey}|${r.date}|${r.displayValue}`
 }
 
 export function removeResult(results: MarkerResult[], id: string): MarkerResult[] {

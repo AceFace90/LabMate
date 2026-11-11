@@ -43,7 +43,6 @@ function DetailTable({ rows }: { rows: [string, string][] }) {
 export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoToSettings, onGoToMarkers }: Props) {
   const [showInfo, setShowInfo] = useState(false)
   const [showCreatine, setShowCreatine] = useState(false)
-  const [showInflammation, setShowInflammation] = useState(false)
   const refs = useRef<Record<string, HTMLElement | null>>({})
   const scrollTo = (k: string) => refs.current[k]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
@@ -221,7 +220,6 @@ export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoTo
                     ['Calendar age', String(bioAge.chronologicalAge)],
                     ['As of', formatIsoDate(bioAge.asOfDate)],
                     ...(bioAge.phenoAgeCreatineAdjusted !== undefined ? ([['Creatine-adjusted', N.decimal(bioAge.phenoAgeCreatineAdjusted)]] as [string, string][]) : []),
-                    ...(bioAge.phenoAgeInflammationAdjusted !== undefined ? ([['Inflammation-adjusted (what-if)', N.decimal(bioAge.phenoAgeInflammationAdjusted)]] as [string, string][]) : []),
                   ]}
                 />
                 <p className="card-narrative">{N.bioAgeNarrative(bioAge)}</p>
@@ -243,11 +241,6 @@ export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoTo
                   ⓘ Creatine adjustment
                 </button>
               )}
-              {bioAge?.phenoAgeInflammationAdjusted !== undefined && (
-                <button type="button" onClick={() => setShowInflammation((v) => !v)}>
-                  ⓘ Inflammation what-if
-                </button>
-              )}
             </div>
           </div>
 
@@ -261,19 +254,6 @@ export function Dashboard({ results, profile, nameFallback, onGoToUpload, onGoTo
               <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5940111/" target="_blank" rel="noreferrer">
                 Primary paper
               </a>
-            </div>
-          )}
-          {showInflammation && bioAge?.phenoAgeInflammationAdjusted !== undefined && (
-            <div className="card info-card">
-              hs-CRP, white cell count and lymphocyte % move sharply with short-term events like surgery or infection. This
-              figure reruns the same PhenoAge formula with any of them that is out of range in that direction capped at the
-              edge of its normal range
-              {bioAge.inflammationCapped.length > 0
-                ? `: ${bioAge.inflammationCapped.map((c) => `${c.label} ${c.value} → ${c.cappedAt} ${c.unit}`).join(', ')}.`
-                : '.'}{' '}
-              It can only remove an inflammation effect, never add one. The headline number keeps your real readings, on
-              purpose, and this adjustment is not a validated model. Use it to tell a temporary spike from a long-term trend; if
-              the gap persists across retests, the inflammation is probably not short-term.
             </div>
           )}
           {profile.takesCreatineSupplement && !profile.sex && (

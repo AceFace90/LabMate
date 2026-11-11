@@ -75,7 +75,6 @@ struct BioAgeCard: View {
     @Environment(AppRouter.self) private var router
     @State private var showInfo = false
     @State private var showCreatine = false
-    @State private var showInflammation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -102,17 +101,11 @@ struct BioAgeCard: View {
                     if model.bioAge?.phenoAgeCreatineAdjusted != nil {
                         infoButton("Creatine adjustment", on: $showCreatine)
                     }
-                    if model.bioAge?.phenoAgeInflammationAdjusted != nil {
-                        infoButton("Inflammation what-if", on: $showInflammation)
-                    }
                 }
                 .font(.footnote)
             }
 
             if showInfo { InfoCard(text: Self.aboutText, link: ("Primary paper", "https://pmc.ncbi.nlm.nih.gov/articles/PMC5940111/")) }
-            if showInflammation, let bio = model.bioAge, bio.phenoAgeInflammationAdjusted != nil {
-                InfoCard(text: Self.inflammationText(bio))
-            }
             if model.profile.takesCreatineSupplement == true && model.profile.sex == nil {
                 InfoCard(text: "Set your sex in Settings to enable the Cystatin C based adjustment. The eGFR equations differ by sex.",
                          tint: HealthColor.serious)
@@ -137,9 +130,6 @@ struct BioAgeCard: View {
         if let c = bio.phenoAgeCreatineAdjusted {
             rows.append(("Creatine-adjusted", InsightsNarrative.decimal(c)))
         }
-        if let i = bio.phenoAgeInflammationAdjusted {
-            rows.append(("Inflammation-adjusted (what-if)", InsightsNarrative.decimal(i)))
-        }
         return rows
     }
 
@@ -151,11 +141,6 @@ struct BioAgeCard: View {
     }
 
     static let aboutText = "PhenoAge (Levine et al., 2018, published in Aging) was derived from about 9,900 adults in the NHANES III cohort and validated against 10-year all-cause mortality. It estimates biological age from nine routine blood markers (albumin, creatinine, glucose, hs-CRP, lymphocyte %, MCV, RDW, ALP, white cell count) plus your chronological age. Coefficients are checked against the paper and the BioAge R package. Treat the result as illustrative, not diagnostic or medical advice."
-
-    static func inflammationText(_ bio: BioAgeResult) -> String {
-        let capped = bio.inflammationCapped.map { "\($0.label) \(JSFormat.number($0.value)) to \(JSFormat.number($0.cappedAt)) \($0.unit)" }.joined(separator: ", ")
-        return "hs-CRP, white cell count and lymphocyte % move sharply with short-term events like surgery or infection. This figure reruns the same PhenoAge formula with any of them that is out of range in that direction capped at the edge of its normal range" + (capped.isEmpty ? "." : ": \(capped).") + " It can only remove an inflammation effect, never add one. The headline number keeps your real readings, on purpose, and this adjustment is not a validated model. Use it to tell a temporary spike from a long-term trend; if the gap persists across retests, the inflammation is probably not short-term."
-    }
 
     static func creatineText(_ bio: BioAgeResult) -> String {
         let egfr = bio.cystatinCEgfr.map { String(format: "%.0f", $0) } ?? "?"

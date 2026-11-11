@@ -37,16 +37,6 @@ nonisolated struct BioAgeContribution: Sendable, Identifiable {
     enum Direction: String, Sendable { case lower, raise }
 }
 
-nonisolated struct BioAgeCappedMarker: Sendable, Identifiable {
-    var key: String
-    var label: String
-    var unit: String
-    var value: Double
-    /// The range limit the value was capped at for the inflammation-adjusted what-if.
-    var cappedAt: Double
-    var id: String { key }
-}
-
 nonisolated struct BioAgeResult: Sendable {
     var phenoAge: Double
     var chronologicalAge: Int
@@ -77,15 +67,6 @@ nonisolated struct BioAgeResult: Sendable {
     /// the real phenoAge above. Only available when you've flagged creatine supplementation
     /// and have a Cystatin C result.
     var phenoAgeCreatineAdjusted: Double?
-    /// What the same, unmodified PhenoAge formula would output with any inflammation marker
-    /// that's out of range in the inflammatory direction (high hs-CRP or white cell count,
-    /// low lymphocyte %) capped at the edge of its normal range - shown alongside (never in
-    /// place of) the real phenoAge above, only when at least one marker was capped, so a
-    /// short-term spike (surgery, infection) can be told apart from a long-term trend. A
-    /// what-if, not a validated model.
-    var phenoAgeInflammationAdjusted: Double?
-    /// The markers capped for phenoAgeInflammationAdjusted, with their real values.
-    var inflammationCapped: [BioAgeCappedMarker]
 }
 
 nonisolated struct BioAgeMissing: Sendable, Identifiable {
@@ -128,18 +109,6 @@ nonisolated enum BioAge {
         PhenoAgeInput(key: "rdw", label: "RDW", unit: "%"),
         PhenoAgeInput(key: "alp", label: "ALP", unit: "U/L"),
         PhenoAgeInput(key: "wcc", label: "White Cell Count", unit: "x10^9/L"),
-    ]
-
-    // Markers that swing with acute inflammation (surgery, infection) rather than long-term ageing,
-    // and the direction inflammation pushes each one: CRP and white cells rise, while lymphocyte %
-    // falls as neutrophils surge. Albumin also drops in acute illness, but it's equally a
-    // nutrition/liver marker, so it's left as-is.
-    // (Ordered array: JS iterates the object keys in this order.)
-    private enum InflammationDirection { case high, low }
-    private static let inflammationDirections: [(key: String, direction: InflammationDirection)] = [
-        ("hs_crp", .high),
-        ("wcc", .high),
-        ("lymphocyte_percent", .low),
     ]
 
     // General, non-personalised levers commonly associated with each marker. Not medical
@@ -217,29 +186,6 @@ nonisolated enum BioAge {
         let chronologicalAge = DateUtils.ageInYears(birthDate, asOfDate)
 
         let phenoAge = phenoAgeFromInputs(inputs, chronologicalAge: chronologicalAge)
-
-        // Inflammation what-if: cap each inflammation marker that's out of range in the
-        // direction inflammation pushes it at that edge of its own normal range (the lab's
-        // printed range if it has one), not the middle - the smallest change that takes it out
-        // of "abnormal". Everything else is left as-is, so this can only ever remove an
-        // inflammation effect, never add one.
-        var cappedInputs = inputs
-        var inflammationCapped: [BioAgeCappedMarker] = []
-        for (key, direction) in inflammationDirections {
-            let range = HealthScore.effectiveRange(used[key]!, MarkerCatalog.marker(key))
-            let value = inputs[key]!
-            let cappedAt: Double?
-            switch direction {
-            case .high: cappedAt = (range.high != nil && value > range.high!) ? range.high : nil
-            case .low: cappedAt = (range.low != nil && value < range.low!) ? range.low : nil
-            }
-            guard let cappedAt else { continue }
-            cappedInputs[key] = cappedAt
-            let input = phenoAgeInputs.first { $0.key == key }!
-            inflammationCapped.append(BioAgeCappedMarker(key: key, label: input.label, unit: input.unit, value: value, cappedAt: cappedAt))
-        }
-        let phenoAgeInflammationAdjusted: Double? =
-            inflammationCapped.isEmpty ? nil : phenoAgeFromInputs(cappedInputs, chronologicalAge: chronologicalAge)
 
         // If we have a Cystatin C result and know sex, derive a creatine-adjusted biological
         // age: Cystatin C -> eGFR (unaffected by creatine) -> invert the standard creatinine
@@ -341,9 +287,7 @@ nonisolated enum BioAge {
             phenoAgeExcludingCreatinine: phenoAgeExcludingCreatinine,
             cystatinCEgfr: cystatinEgfr,
             normalisedCreatinine: normalisedCreatinine,
-            phenoAgeCreatineAdjusted: phenoAgeCreatineAdjusted,
-            phenoAgeInflammationAdjusted: phenoAgeInflammationAdjusted,
-            inflammationCapped: inflammationCapped
+            phenoAgeCreatineAdjusted: phenoAgeCreatineAdjusted
         ))
     }
 }
